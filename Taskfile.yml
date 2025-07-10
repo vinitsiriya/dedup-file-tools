@@ -1,0 +1,34 @@
+version: '3'
+tasks:
+  test:
+    desc: Run all Python tests
+    cmds:
+      - bash ./scripts/test.sh
+      - pwsh ./scripts/test.ps1
+  lint:
+    desc: Run flake8 linter
+    cmds:
+      - bash ./scripts/lint.sh
+      - pwsh ./scripts/lint.ps1
+  format:
+    desc: Run black code formatter
+    cmds:
+      - bash ./scripts/black.sh
+      - pwsh ./scripts/black.ps1
+  typecheck:
+    desc: Run mypy type checker
+    cmds:
+      - bash ./scripts/mypy.sh
+      - pwsh ./scripts/mypy.ps1
+  build:
+    desc: Build the Python package (sdist and wheel)
+    cmds:
+      - python setup.py sdist bdist_wheel
+  install:
+    desc: Install the package in editable mode using pipx
+    cmds:
+      - pipx install -e .
+  install-dev:
+    desc: Install all dev dependencies (editable mode)
+    cmds:
+      - pip install -e .[dev]

@@ -1,0 +1,31 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="fs-copy-tool",
+    version="0.1.0",
+    description="Non-Redundant Media File Copy Tool: resumable, auditable, cross-platform, CLI-based.",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    author="Your Name",
+    author_email="your@email.com",
+    url="https://github.com/yourusername/fs-copy-tool",
+    packages=find_packages(),
+    include_package_data=True,
+    install_requires=[
+        r.strip() for r in open("requirements.txt") if r.strip() and not r.startswith("#")
+    ],
+    entry_points={
+        "console_scripts": [
+            "fs-copy-tool=fs_copy_tool.main:main"
+        ]
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Topic :: Utilities",
+    ],
+    python_requires=">=3.8",
+)
