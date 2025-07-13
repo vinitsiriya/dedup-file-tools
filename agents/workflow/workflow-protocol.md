@@ -68,15 +68,28 @@ This directory contains the canonical workflow protocol documentation for the pr
 
 ---
 
-### Proposal Completion and Archival Protocol
+### Proposal Refinement and User Story Chronology Protocol
 
-- When a proposal (requirement or strategy) is marked as "Complete":
-  - The agent must immediately archive the full proposal file (requirement or strategy) into the appropriate `archived/YYYY-MM-DD-HHMM/` directory, using the current date and time.
-  - The agent must update the `proposal/status.md` table to reflect the new status as "Complete".
-  - The agent must then **delete the original proposal file** from the `proposal/requirement/` or `proposal/strategy/` directory, so only active (incomplete) proposals remain.
-  - The agent must log the archival and deletion action in the commit message or workflow log for traceability.
-- Archival and deletion are mandatory and must be performed as soon as a proposal is closed as complete. Failure to archive and delete is a protocol violation.
+- During the proposal refinement stage, only update the proposal file with clarifications, discussion, and refinements.
+- The agent must present each new proposal draft to the user and explicitly ask for feedback or refinements.
+- The agent must continue to iterate and refine the proposal based on user feedback, and only proceed after explicit user approval.
+- **User stories, tasks, and notes must NOT be created or updated until the proposal is explicitly marked as "Accepted" or "Ready for implementation" in the proposal file.**
+- Once the proposal is accepted, immediately proceed to update the user story, task, and notes files to reflect the approved requirements and implementation plan.
+- This strict chronology ensures that user stories and tasks always reflect only approved requirements, and prevents premature or out-of-order documentation.
+
+---
+
+### Unified Archival Protocol for Proposals and User Stories
+
+- When a proposal (requirement or strategy) or a user story (with its tasks and notes) is marked as "Complete":
+  - The agent must immediately archive the full file(s) into the appropriate `archived/YYYY-MM-DD-HHMM/` directory, using the current date and time.
+  - **Archival must be performed by running the provided archival script (`archive_agents.sh` or `archive_agents.ps1`) in the `scripts/` directory.** Manual copying or deletion is not permitted; files must be moved using these scripts to ensure traceability and protocol compliance.
+  - For proposals, update `proposal/status.md` to reflect the new status as "Complete". For user stories, update the relevant checklist or status table to reflect completion.
+  - The agent must then **delete the original file(s)** from the active `proposal/requirement/`, `proposal/strategy/`, or `user-story/` directories, so only active (incomplete) items remain. This deletion is performed as part of the archival script.
+  - The archival and deletion action must be logged in the commit message or workflow log for traceability.
+- Archival and deletion are mandatory and must be performed as soon as a proposal or user story is closed as complete. Failure to archive and delete using the provided script is a protocol violation.
 - The archival and deletion process must be visible and explicit in the agent's workflow, with clear steps and confirmation.
+- This ensures both proposals and user stories follow the same, crystal-clear archival process for a clean, auditable, and focused workflow.
 
 ---
 
@@ -88,6 +101,24 @@ This directory contains the canonical workflow protocol documentation for the pr
 - Archival is performed via scripts (e.g., `archive_agents.sh` and `archive_agents.ps1`) in the `scripts/` directory.
 - The agent or user must run the archival script after each major commit.
 - This ensures a clean, focused workspace for new work, and a full, immutable history for audit and review.
+
+---
+
+### Requirement Proposal Content Protocol
+
+- Requirement proposals must focus strictly on the technical, user-facing, and functional requirements of the feature or change being proposed.
+- References to workflow process, chronology, or protocol enforcement should not be included in the requirement proposal itself.
+- All workflow and process rules are to be documented and enforced exclusively in the workflow protocol documentation.
+- This ensures that requirement proposals remain clear, concise, and focused on the feature, while process compliance is managed separately.
+
+---
+
+### Proposal Approval and User Story Creation Protocol
+
+- Once a requirement proposal is reviewed and approved by the user, its status must be immediately updated to "Accepted" or "Ready for implementation" in the proposal file and in `proposal/status.md`.
+- Only after this status update is performed may the agent proceed to create or update user stories, tasks, and notes reflecting the approved requirements.
+- This step must be explicit and auditable, ensuring that user stories and tasks are always based on approved proposals and never created prematurely.
+- The agent must log or document the approval and status change as part of the workflow.
 
 ---
 

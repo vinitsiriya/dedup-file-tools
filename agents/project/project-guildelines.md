@@ -32,6 +32,7 @@ This project uses an **agent-oriented workflow** to manage complex file operatio
 - Scripts must be **cross-platform** (Windows + Linux).
 - The codebase must remain free of duplicate or obsolete files at all times.
 - Refactor and consolidate logic as the project evolves to maintain clarity and maintainability.
+- **All Python scripts, tests, and automation in this project must use the Python interpreter from the `/.venv` virtual environment at the project root. Do not use the system Python.**
 
 ---
 
@@ -54,4 +55,4 @@ This project uses an **agent-oriented workflow** to manage complex file operatio
 
 ---
 
-_Last updated: 2025-07-12_
+_Last updated: 2025-07-13_

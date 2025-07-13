@@ -36,9 +36,33 @@ $venvPython = if (Test-Path ".\venv\Scripts\python.exe") { ".\venv\Scripts\pytho
 # Copy files (protocol: must use progress bars and threads)
 & $venvPython fs_copy_tool/main.py copy --job-dir .temp/job --src $src --dst $dst --threads 2
 
+# Simulate interruption: delete one file from destination
+$deletedFile = Get-ChildItem $dst | Select-Object -First 1
+if ($deletedFile) {
+    Write-Host "Simulating interruption: deleting $($deletedFile.Name) from destination."
+    Remove-Item $deletedFile.FullName
+}
+
+# Resume copy (should only re-copy the missing file)
+& $venvPython fs_copy_tool/main.py copy --job-dir .temp/job --src $src --dst $dst --threads 2
+
 # Show status and log (protocol: must check results)
 & $venvPython fs_copy_tool/main.py status --job-dir .temp/job
 & $venvPython fs_copy_tool/main.py log --job-dir .temp/job
+
+# Run shallow and deep verification as separate phases
+& $venvPython fs_copy_tool/main.py verify --job-dir .temp/job --src $src --dst $dst
+& $venvPython fs_copy_tool/main.py deep-verify --job-dir .temp/job --src $src --dst $dst
+
+# Print verification summary and full history using the new CLI commands
+Write-Host "\nShallow verification status summary (latest for each file):"
+& $venvPython fs_copy_tool/main.py verify-status-summary --job-dir .temp/job
+Write-Host "\nShallow verification status full (all history):"
+& $venvPython fs_copy_tool/main.py verify-status-full --job-dir .temp/job
+Write-Host "\nDeep verification status summary (latest for each file):"
+& $venvPython fs_copy_tool/main.py deep-verify-status-summary --job-dir .temp/job
+Write-Host "\nDeep verification status full (all history):"
+& $venvPython fs_copy_tool/main.py deep-verify-status-full --job-dir .temp/job
 
 Write-Host "Manual test completed. Check .temp/dst for copied files and .temp/job for database/logs."
 Write-Host "Review logs for per-file and overall progress bar output as required by protocol."
