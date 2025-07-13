@@ -27,9 +27,9 @@ def test_end_to_end(tmp_path):
     init_db(db_path)
     analyze_volumes(db_path, [str(src_dir)], 'source_files')
     analyze_volumes(db_path, [str(dst_dir)], 'destination_files')
-    update_checksums(db_path, 'source_files')
-    update_checksums(db_path, 'destination_files')
-    copy_files(db_path, [str(src_dir)], [str(dst_dir)])
+    update_checksums(db_path, 'source_files', threads=2)
+    update_checksums(db_path, 'destination_files', threads=2)
+    copy_files(db_path, [str(src_dir)], [str(dst_dir)], threads=2)
     # After copy, destination should have both files
     assert (dst_dir / "a.txt").exists()
     assert (dst_dir / "b.txt").exists()

@@ -8,6 +8,7 @@ from fs_copy_tool.utils.uidpath import UidPath
 from fs_copy_tool.utils.fileops import compute_sha256
 from pathlib import Path
 import os
+from tqdm import tqdm
 
 def persist_file_metadata(db_path, table, file_info):
     with sqlite3.connect(db_path) as conn:
@@ -37,6 +38,7 @@ def scan_files_on_volume(volume_root, uid_path: UidPath):
         if file.is_file():
             rel = str(file.relative_to(mountpoint))
             stat = file.stat()
+            logging.info(f"[AGENT][ANALYZE] Indexed: {file}")
             yield {
                 'uid': mount_id,
                 'relative_path': rel,
@@ -46,7 +48,17 @@ def scan_files_on_volume(volume_root, uid_path: UidPath):
 
 def analyze_volumes(db_path, volume_roots, table):
     uid_path = UidPath()
+    total_files = 0
+    # First, count total files for progress bar
     for root in volume_roots:
-        for file_info in scan_files_on_volume(root, uid_path):
-            persist_file_metadata(db_path, table, file_info)
-            logging.info(f"Indexed: {file_info['uid']}:{file_info['relative_path']}")
+        for _ in scan_files_on_volume(root, uid_path):
+            total_files += 1
+    if total_files == 0:
+        return
+    # Now process with progress bar
+    with tqdm(total=total_files, desc=f"Analyzing {table}") as pbar:
+        for root in volume_roots:
+            for file_info in scan_files_on_volume(root, uid_path):
+                persist_file_metadata(db_path, table, file_info)
+                logging.info(f"Indexed: {file_info['uid']}:{file_info['relative_path']}")
+                pbar.update(1)

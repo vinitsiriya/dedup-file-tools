@@ -143,4 +143,10 @@ CREATE INDEX IF NOT EXISTS idx_source_status ON source_files (copy_status);
 
 ---
 
+## Test Requirements
+- All detailed requirements and protocols for automated, stress, and edge-case testing are maintained in `requirements-test.md`.
+- This file (`requirements.md`) will reference `requirements-test.md` for all test-related requirements.
+
+---
+
 

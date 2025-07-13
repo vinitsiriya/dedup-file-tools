@@ -46,11 +46,15 @@ def main():
     parser_checksum = subparsers.add_parser('checksum', help='Update checksums for files')
     parser_checksum.add_argument('--job-dir', required=True, help='Path to job directory')
     parser_checksum.add_argument('--table', choices=['source_files', 'destination_files'], required=True)
+    parser_checksum.add_argument('--threads', type=int, default=4, help='Number of threads for checksum phase (default: 4)')
+    parser_checksum.add_argument('--no-progress', action='store_true', help='Disable progress bar')
 
     parser_copy = subparsers.add_parser('copy', help='Copy files from source to destination')
     parser_copy.add_argument('--job-dir', required=True, help='Path to job directory')
     parser_copy.add_argument('--src', nargs='+', help='Source volume root(s)')
     parser_copy.add_argument('--dst', nargs='+', help='Destination volume root(s)')
+    parser_copy.add_argument('--threads', type=int, default=4, help='Number of threads for copy phase (default: 4)')
+    parser_copy.add_argument('--no-progress', action='store_true', help='Disable progress bar')
 
     # Resume command
     parser_resume = subparsers.add_parser('resume', help='Resume incomplete or failed operations')
@@ -87,12 +91,12 @@ def main():
     elif args.command == 'checksum':
         db_path = get_db_path_from_job_dir(args.job_dir)
         init_db(db_path)
-        update_checksums(db_path, args.table)
+        update_checksums(db_path, args.table, threads=args.threads)
         return
     elif args.command == 'copy':
         db_path = get_db_path_from_job_dir(args.job_dir)
         init_db(db_path)
-        copy_files(db_path, args.src, args.dst)
+        copy_files(db_path, args.src, args.dst, threads=args.threads)
         return
     elif args.command == 'resume':
         db_path = get_db_path_from_job_dir(args.job_dir)
