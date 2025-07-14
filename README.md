@@ -69,6 +69,12 @@ python -m fs_copy_tool.main import-checksums --job-dir .copy-task --old-db <OLD_
 
 ---
 
+## CLI Documentation
+
+See [docs/cli.md](docs/cli.md) for complete CLI command reference, usage examples, and best practices.
+
+---
+
 ## Testing
 Run all tests (Windows PowerShell):
 ```
