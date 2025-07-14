@@ -23,3 +23,8 @@ Integration tests verify that multiple components work together as expected, inc
 ## Extending
 - Add new integration or E2E test files in `tests/` or `e2e_tests/`.
 - Document any new workflows or scenarios covered.
+
+## Stateful CLI Integration
+- Integration tests must cover the new file-level stateful CLI commands (`add-file`, `add-source`, `list-files`, `remove-file`).
+- Workflows should demonstrate incremental job setup and correct operation of all phases after file addition/removal.
+- Directory-level state is not supported; integration tests must operate at the file level.

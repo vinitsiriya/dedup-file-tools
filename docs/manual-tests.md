@@ -21,3 +21,9 @@ Manual tests are used for interactive or exploratory testing, especially for sce
 ## Extending
 - Update or add new manual test scripts as needed.
 - Document manual test procedures and expected outcomes in this file or in the planning docs.
+
+## Stateful CLI Manual Testing
+- Manually test the new file-level stateful CLI commands:
+  - `add-file`, `add-source`, `list-files`, `remove-file`
+- Verify incremental job setup, file addition/removal, and correct operation of all phases after stateful setup.
+- Directory-level state is not supported; manual tests must operate at the file level.

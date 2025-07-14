@@ -6,11 +6,14 @@ import argparse
 import logging
 import os
 import sys
+import sqlite3
+from pathlib import Path
 from fs_copy_tool.db import init_db
 from fs_copy_tool.phases.analysis import analyze_volumes
 from fs_copy_tool.phases.checksum import update_checksums, import_checksums_from_old_db
 from fs_copy_tool.phases.copy import copy_files
 from fs_copy_tool.phases.verify import shallow_verify_files, deep_verify_files
+from fs_copy_tool.utils.uidpath import UidPath
 
 def init_job_dir(job_dir):
     os.makedirs(job_dir, exist_ok=True)
@@ -23,6 +26,82 @@ def init_job_dir(job_dir):
 
 def get_db_path_from_job_dir(job_dir):
     return os.path.join(job_dir, 'copytool.db')
+
+def add_file_to_db(db_path, file_path):
+    file = Path(file_path)
+    print(f"[DEBUG] add_file_to_db: file_path={file_path}", file=sys.stderr)
+    print(f"[DEBUG] Path(file_path)={file}", file=sys.stderr)
+    print(f"[DEBUG] file.exists()={file.exists()}", file=sys.stderr)
+    print(f"[DEBUG] file.is_file()={file.is_file()}", file=sys.stderr)
+    if not file.is_file():
+        print(f"Error: {file_path} is not a file.", file=sys.stderr)
+        sys.exit(1)
+    # Use the resolved parent directory as the UID (like add_source_to_db)
+    mount_id = str(file.parent.resolve())
+    rel = file.name
+    try:
+        stat = file.stat()
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO source_files (uid, relative_path, size, last_modified, checksum_stale)
+                VALUES (?, ?, ?, ?, 1)
+                ON CONFLICT(uid, relative_path) DO UPDATE SET
+                    size=excluded.size,
+                    last_modified=excluded.last_modified,
+                    checksum_stale=1
+            """, (mount_id, rel, stat.st_size, int(stat.st_mtime)))
+            conn.commit()
+        print(f"Added file: {file_path}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error adding file: {file_path}\n{e}", file=sys.stderr)
+        sys.exit(1)
+
+def add_source_to_db(db_path, src_dir):
+    uid_path = UidPath()
+    src = Path(src_dir)
+    if not src.is_dir():
+        print(f"Error: {src_dir} is not a directory.")
+        return
+    count = 0
+    resolved_src = str(src.resolve())
+    for file in src.rglob("*"):
+        if file.is_file():
+            mount_id = resolved_src
+            rel = str(file.relative_to(src))
+            stat = file.stat()
+            with sqlite3.connect(db_path) as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO source_files (uid, relative_path, size, last_modified, checksum_stale)
+                    VALUES (?, ?, ?, ?, 1)
+                    ON CONFLICT(uid, relative_path) DO UPDATE SET
+                        size=excluded.size,
+                        last_modified=excluded.last_modified,
+                        checksum_stale=1
+                """, (mount_id, rel, stat.st_size, int(stat.st_mtime)))
+                conn.commit()
+            count += 1
+    print(f"Added {count} files from directory: {src_dir}")
+
+def list_files_in_db(db_path):
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT uid, relative_path, size, last_modified FROM source_files ORDER BY uid, relative_path")
+        rows = cur.fetchall()
+        for row in rows:
+            print(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]}")
+    print(f"Total files: {len(rows)}")
+
+def remove_file_from_db(db_path, file_path):
+    file = Path(file_path)
+    mount_id = str(file.parent)
+    rel = file.name
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM source_files WHERE uid=? AND relative_path=?", (mount_id, rel))
+        conn.commit()
+    print(f"Removed file: {file_path}")
 
 def main():
     parser = argparse.ArgumentParser(description="Non-Redundant Media File Copy Tool")
@@ -75,10 +154,11 @@ def main():
     parser_log.add_argument('--job-dir', required=True, help='Path to job directory')
 
     # Shallow verify command (basic attributes)
-    parser_shallow_verify = subparsers.add_parser('verify', help='Shallow verify: check existence, size, last_modified')
+    parser_shallow_verify = subparsers.add_parser('verify', help='Shallow or deep verify: check existence, size, last_modified, or checksums')
     parser_shallow_verify.add_argument('--job-dir', required=True, help='Path to job directory')
     parser_shallow_verify.add_argument('--src', nargs='+', help='Source volume root(s)')
     parser_shallow_verify.add_argument('--dst', nargs='+', help='Destination volume root(s)')
+    parser_shallow_verify.add_argument('--stage', choices=['shallow', 'deep'], default='shallow', help='Verification stage: shallow (default) or deep')
 
     # Deep verify command (checksums)
     parser_deep_verify = subparsers.add_parser('deep-verify', help='Deep verify: compare checksums between source and destination')
@@ -109,6 +189,25 @@ def main():
     # Deep verify status full (detailed)
     parser_deep_status_full = subparsers.add_parser('deep-verify-status-full', help='Show all deep verification results (full history)')
     parser_deep_status_full.add_argument('--job-dir', required=True, help='Path to job directory')
+
+    # Add file command
+    parser_add_file = subparsers.add_parser('add-file', help='Add a single file to the job state/database')
+    parser_add_file.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_add_file.add_argument('--file', required=True, help='Path to the file to add')
+
+    # Add source command (recursive add)
+    parser_add_source = subparsers.add_parser('add-source', help='Recursively add all files from a directory to the job state/database')
+    parser_add_source.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_add_source.add_argument('--src', required=True, help='Source directory to add')
+
+    # List files command
+    parser_list_files = subparsers.add_parser('list-files', help='List all files currently in the job state/database')
+    parser_list_files.add_argument('--job-dir', required=True, help='Path to job directory')
+
+    # Remove file command
+    parser_remove_file = subparsers.add_parser('remove-file', help='Remove a file from the job state/database')
+    parser_remove_file.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_remove_file.add_argument('--file', required=True, help='Path to the file to remove')
 
     args = parser.parse_args()
 
@@ -168,7 +267,10 @@ def main():
         return
     elif args.command == 'verify':
         db_path = get_db_path_from_job_dir(args.job_dir)
-        shallow_verify_files(db_path, args.src, args.dst)
+        if args.stage == 'shallow':
+            shallow_verify_files(db_path, args.src, args.dst)
+        else:
+            deep_verify_files(db_path, args.src, args.dst)
         return
     elif args.command == 'deep-verify':
         db_path = get_db_path_from_job_dir(args.job_dir)
@@ -261,6 +363,22 @@ def main():
             ''')
             for row in cur.fetchall():
                 print(f"{row[0]} | status: {row[1]} | error: {row[2]} | expected: {row[3]} | src: {row[4]} | dst: {row[5]} | ts: {row[6]}")
+        return
+    elif args.command == 'add-file':
+        db_path = get_db_path_from_job_dir(args.job_dir)
+        add_file_to_db(db_path, args.file)
+        return
+    elif args.command == 'add-source':
+        db_path = get_db_path_from_job_dir(args.job_dir)
+        add_source_to_db(db_path, args.src)
+        return
+    elif args.command == 'list-files':
+        db_path = get_db_path_from_job_dir(args.job_dir)
+        list_files_in_db(db_path)
+        return
+    elif args.command == 'remove-file':
+        db_path = get_db_path_from_job_dir(args.job_dir)
+        remove_file_from_db(db_path, args.file)
         return
     else:
         parser.print_help()

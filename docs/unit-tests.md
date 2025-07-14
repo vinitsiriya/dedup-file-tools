@@ -22,3 +22,8 @@ Unit tests verify the correctness of individual modules and functions in isolati
 ## Extending
 - Add new test files in `tests/` following the naming convention `test_*.py`.
 - Reference the module or function under test in the test file docstring.
+
+## Stateful CLI Unit Testing
+- Unit tests should cover helper functions for file addition, removal, and listing in the job state/database.
+- Ensure all new code for stateful CLI is covered by unit tests.
+- Directory-level state is not supported; unit tests must operate at the file level.

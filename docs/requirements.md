@@ -74,6 +74,23 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 ---
 
+### 5. Stateful, File-Level Job Setup (NEW)
+
+* **Objective:**
+  Support incremental, auditable job setup and modification at the file level.
+
+* **Process:**
+
+  * Use CLI commands to manage job state:
+    * `add-file` — Add a single file to the job state/database
+    * `add-source` — Recursively add all files from a directory
+    * `list-files` — List all files currently in the job state/database
+    * `remove-file` — Remove a file from the job state/database
+  * All job setup and modification must be performed at the file level (directory-level state is not supported).
+  * All state changes are persisted in the job directory database and are fully auditable.
+
+---
+
 ## Database Schema
 
 ### `source_files` Table
@@ -81,29 +98,29 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 | Column              | Type                  | Description                                          |
 | ------------------- | --------------------- | ---------------------------------------------------- |
 | uid                 | TEXT                  | Source volume unique identifier (UUID or Serial No.) |
-| relative\_path      | TEXT                  | File path relative to volume root                    |
-| last\_modified      | INTEGER               | Last modified timestamp (epoch)                      |
+| relative_path       | TEXT                  | File path relative to volume root                    |
+| last_modified       | INTEGER               | Last modified timestamp (epoch)                      |
 | size                | INTEGER               | File size in bytes                                   |
 | checksum            | TEXT                  | SHA-256 checksum                                     |
-| checksum\_stale     | INTEGER               | 1 if checksum needs recalculation, 0 if up-to-date   |
-| copy\_status        | TEXT                  | 'pending', 'in\_progress', 'done', 'error'           |
-| last\_copy\_attempt | INTEGER               | Timestamp of last copy attempt                       |
-| error\_message      | TEXT                  | Last error message, if any                           |
-| PRIMARY KEY         | (uid, relative\_path) |                                                      |
+| checksum_stale      | INTEGER               | 1 if checksum needs recalculation, 0 if up-to-date   |
+| copy_status         | TEXT                  | 'pending', 'in_progress', 'done', 'error'            |
+| last_copy_attempt   | INTEGER               | Timestamp of last copy attempt                       |
+| error_message       | TEXT                  | Last error message, if any                           |
+| PRIMARY KEY         | (uid, relative_path)  |                                                      |
 
 ### `destination_files` Table
 
 | Column          | Type                  | Description                                               |
 | --------------- | --------------------- | --------------------------------------------------------- |
 | uid             | TEXT                  | Destination volume unique identifier (UUID or Serial No.) |
-| relative\_path  | TEXT                  | File path relative to volume root                         |
-| last\_modified  | INTEGER               | Last modified timestamp (epoch)                           |
+| relative_path   | TEXT                  | File path relative to volume root                         |
+| last_modified   | INTEGER               | Last modified timestamp (epoch)                           |
 | size            | INTEGER               | File size in bytes                                        |
 | checksum        | TEXT                  | SHA-256 checksum                                          |
-| checksum\_stale | INTEGER               | 1 if checksum needs recalculation, 0 if up-to-date        |
-| copy\_status    | TEXT                  | 'done' (other statuses optional for tracking)             |
-| error\_message  | TEXT                  | Error message if file couldn't be scanned/checked         |
-| PRIMARY KEY     | (uid, relative\_path) |                                                           |
+| checksum_stale  | INTEGER               | 1 if checksum needs recalculation, 0 if up-to-date        |
+| copy_status     | TEXT                  | 'done' (other statuses optional for tracking)             |
+| error_message   | TEXT                  | Error message if file couldn't be scanned/checked         |
+| PRIMARY KEY     | (uid, relative_path)  |                                                           |
 
 #### Indexes
 
@@ -132,6 +149,7 @@ CREATE INDEX IF NOT EXISTS idx_source_status ON source_files (copy_status);
 * **All phases and state are persisted in SQLite**—no critical state is held in memory.
 * **No file is ever copied if its checksum already exists in the destination.**
 * **The tool can be safely interrupted and resumed at any point, with progress, errors, and results tracked and queryable via the database.**
+* **All job setup and modification is performed at the file level using stateful CLI commands.**
 
 ---
 
@@ -139,7 +157,7 @@ CREATE INDEX IF NOT EXISTS idx_source_status ON source_files (copy_status);
 
 - Add: Ability to import checksum values for files from an existing (old) SQLite database file, matching on (uid, relative_path, size, last_modified).
 - Add: The tool must always store its SQLite database and all job-related files in a dedicated, user-visible job directory (e.g., `.copy-task`). The CLI must support an `init` command to create and initialize this directory, and all subsequent operations must use it for state, logs, and planning files.
-- Add: CLI commands for `init`, `analyze`, `import-checksums`, `checksum`, `copy`, `resume`, `status`, and `log`/`audit` as described in the accepted proposal.
+- Add: CLI commands for `init`, `analyze`, `import-checksums`, `checksum`, `copy`, `resume`, `status`, `log`/`audit`, and **stateful file-level job setup** (`add-file`, `add-source`, `list-files`, `remove-file`) as described in the accepted proposal.
 
 ---
 

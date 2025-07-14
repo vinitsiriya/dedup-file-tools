@@ -35,3 +35,20 @@ As a user, I want the file copy tool to safely resume interrupted copy operation
 
 **Motivation:**
 Large file copies are often interrupted. Users need a reliable way to resume and verify integrity at the file level without starting over, ensuring trust in the copy process.
+
+---
+
+## User Story: Stateful CLI for Incremental File Addition (File-Level Only)
+
+**Summary:**
+As a user, I want to incrementally add individual files (or all files from a directory) to a copy job using the CLI, so that I can build up complex or staged copy jobs over time before running analysis or copy operations. Directory-level tracking is not supported.
+
+**Acceptance Criteria:**
+- The CLI provides commands to add files to a job state (e.g., `add-file`, `add-source` as recursive add).
+- The job state persists the list of files for later operations.
+- Users can list and remove individual files from the job state.
+- All phases (analyze, copy, etc.) operate on the current job state.
+- Documentation and tests are updated to reflect the new workflow and limitations.
+
+**Motivation:**
+This enables more flexible, real-world workflows at the file level, supporting large or staged copy jobs, and reduces user error for complex tasks. Directory-level operations are not supported without schema changes.

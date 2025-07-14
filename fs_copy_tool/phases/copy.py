@@ -10,26 +10,40 @@ from fs_copy_tool.utils.fileops import copy_file, verify_file
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+import time
 
 def reset_status_for_missing_files(db_path, dst_roots):
     """
     For any file marked as done but missing from all destination roots, reset its status to 'pending'.
     """
+    import os
+    from pathlib import Path
+    import sys
+    import sqlite3
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT uid, relative_path, copy_status FROM source_files
         """)
         candidates = cur.fetchall()
-    for uid, rel_path, copy_status in candidates:
-        missing = False
-        for dst_root in dst_roots:
-            dst_file = Path(dst_root) / rel_path
-            if not dst_file.exists():
-                missing = True
-                break
-        if copy_status == 'done' and missing:
-            mark_copy_status(db_path, uid, rel_path, 'pending', 'Destination file missing, will retry')
+        for uid, rel_path, copy_status in candidates:
+            print(f"[DEBUG] Checking file: uid={uid}, rel_path={rel_path}, copy_status={copy_status}", file=sys.stderr)
+            sys.stderr.flush()
+            missing = True
+            for dst_root in dst_roots:
+                dst_file = Path(dst_root) / rel_path
+                print(f"[DEBUG]   Checking dst_file={dst_file} exists={dst_file.exists()}", file=sys.stderr)
+                sys.stderr.flush()
+                if dst_file.exists():
+                    missing = False
+                    break
+            if copy_status == 'done' and missing:
+                print(f"[DEBUG] Resetting {rel_path} to pending (was done, now missing)", file=sys.stderr)
+                sys.stderr.flush()
+                mark_copy_status(db_path, uid, rel_path, 'pending', 'Destination file missing, will retry')
+        conn.commit()  # Ensure all changes are flushed
+    print(f"[DEBUG] reset_status_for_missing_files: completed", file=sys.stderr)
+    sys.stderr.flush()
 
 def get_pending_copies(db_path):
     with sqlite3.connect(db_path) as conn:
@@ -46,6 +60,20 @@ def checksum_exists_in_destination(db_path, checksum):
         cur.execute("SELECT 1 FROM destination_files WHERE checksum=? LIMIT 1", (checksum,))
         return cur.fetchone() is not None
 
+def checksum_exists_on_disk(db_path, checksum, dst_roots):
+    # Check if any file with this checksum exists on disk in any destination root
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT relative_path FROM destination_files WHERE checksum=?", (checksum,))
+        rows = cur.fetchall()
+    for rel_path_tuple in rows:
+        rel_path = rel_path_tuple[0]
+        for dst_root in dst_roots:
+            dst_file = Path(dst_root) / rel_path
+            if dst_file.exists():
+                return True
+    return False
+
 def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
@@ -57,12 +85,29 @@ def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
 
 def copy_files(db_path, src_roots, dst_roots, threads=4):
     import os
+    import sys
+    import time
+    print(f"[DEBUG] copy_files: db_path={db_path}, src_roots={src_roots}, dst_roots={dst_roots}", file=sys.stderr)
+    sys.stderr.flush()
     uid_path = UidPath()
+    # Normalize all src_roots for robust matching
+    src_roots = [str(Path(root).resolve()) for root in (src_roots or [])]
     reset_status_for_missing_files(db_path, dst_roots)
+    time.sleep(0.1)  # Ensure DB changes are visible (Windows workaround)
     pending = get_pending_copies(db_path)
     if not pending:
         return
-    copied_checksums = set()
+    # Build a set of all checksums already present on disk in the destination
+    checksums_on_disk = set()
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT checksum, relative_path FROM destination_files WHERE checksum IS NOT NULL")
+        for checksum, rel_path in cur.fetchall():
+            for dst_root in dst_roots:
+                dst_file = Path(dst_root) / rel_path
+                if dst_file.exists():
+                    checksums_on_disk.add(checksum)
+    copied_checksums = set(checksums_on_disk)
     copied_lock = Lock()
     def process_copy(args):
         uid, rel_path, size, last_modified, checksum = args
@@ -70,27 +115,41 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
             mark_copy_status(db_path, uid, rel_path, 'error', 'No checksum')
             logging.error(f"[AGENT][COPY] Skipped (no checksum): {rel_path}")
             return False
-        dst_file_exists = False
-        for dst_root in dst_roots:
-            dst_file = Path(dst_root) / rel_path
-            if dst_file.exists():
-                dst_file_exists = True
-                break
         with copied_lock:
-            # Only skip if both: checksum exists in DB AND file exists on disk
-            if checksum_exists_in_destination(db_path, checksum) and dst_file_exists:
+            if checksum in copied_checksums:
                 mark_copy_status(db_path, uid, rel_path, 'done')
-                logging.info(f"[AGENT][COPY] Skipped (already copied and file exists): {rel_path}")
+                logging.info(f"[AGENT][COPY] Skipped (deduplication: already present on disk or copied this batch): {rel_path}")
                 return True
-            copied_checksums.add(checksum)
-        src_mount = uid if os.path.isdir(uid) else uid_path.get_mount_point_from_volume_id(uid)
-        if not src_mount and os.path.isdir(uid):
-            src_mount = uid
+            copied_checksums.add(checksum)  # Atomically claim this checksum for this batch
+        # Only skip if checksum exists on disk in destination
+        if checksum_exists_on_disk(db_path, checksum, dst_roots):
+            mark_copy_status(db_path, uid, rel_path, 'done')
+            logging.info(f"[AGENT][COPY] Skipped (checksum already present on disk in destination): {rel_path}")
+            return True
+        # Normalize UID for matching
+        norm_uid = str(Path(uid).resolve())
+        print(f"[DEBUG] process_copy: uid={uid} norm_uid={norm_uid} rel_path={rel_path} src_roots={src_roots}", file=sys.stderr)
+        sys.stderr.flush()
+        src_mount = None
+        for root in src_roots:
+            if root == norm_uid:
+                src_mount = root
+                break
         if not src_mount:
-            mark_copy_status(db_path, uid, rel_path, 'error', 'Source volume not available')
-            logging.error(f"[AGENT][COPY] Skipped (source volume not available): {rel_path} (uid={uid})")
+            src_mount = norm_uid if os.path.isdir(norm_uid) else uid_path.get_mount_point_from_volume_id(norm_uid)
+        if not src_mount and os.path.isdir(norm_uid):
+            src_mount = norm_uid
+        src_file = Path(src_mount) / rel_path if src_mount else None
+        print(f"[DEBUG] Resolved src_file={src_file} exists={src_file.exists() if src_file else 'N/A'}", file=sys.stderr)
+        sys.stderr.flush()
+        if not src_mount or not src_file.exists():
+            print(f"[ERROR] Source file not found for resume: src_mount={src_mount} rel_path={rel_path}", file=sys.stderr)
+            if src_mount:
+                print(f"[ERROR] Listing files in src_mount {src_mount}:", file=sys.stderr)
+                for f in Path(src_mount).rglob('*'):
+                    print(f"  - {f}", file=sys.stderr)
+            mark_copy_status(db_path, uid, rel_path, 'error', 'Source file not found for resume')
             return False
-        src_file = Path(src_mount) / rel_path
         for dst_root in dst_roots:
             dst_uid = dst_root if os.path.isdir(dst_root) else uid_path.get_volume_id_from_path(dst_root)
             dst_mount = dst_uid if os.path.isdir(dst_uid) else uid_path.get_mount_point_from_volume_id(dst_uid)
@@ -105,7 +164,6 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
                 def log_progress(percent, copied, total):
                     if percent % 10 == 0 or percent == 100:
                         logging.info(f"[AGENT][COPY][PROGRESS] {rel_path}: {percent}% ({copied}/{total} bytes)")
-                # Always restart file copy; no chunk-level resume
                 src_checksum, dst_checksum = copy_file(src_file, dst_file, progress_callback=log_progress, show_progressbar=True)
                 if src_checksum == dst_checksum == checksum:
                     with sqlite3.connect(db_path) as conn:

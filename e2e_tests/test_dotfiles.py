@@ -26,7 +26,7 @@ def test_dotfile():
     (src / '.hidden_file').write_text('hidden', encoding='utf-8')
     job_dir = Path(tempfile.mkdtemp())
     run_quiet([python_exec, '-m', 'fs_copy_tool.main', 'init', '--job-dir', str(job_dir)], env)
-    run_quiet([python_exec, '-m', 'fs_copy_tool.main', 'analyze', '--job-dir', str(job_dir), '--src', str(src)], env)
+    run_quiet([python_exec, '-m', 'fs_copy_tool.main', 'add-file', '--job-dir', str(job_dir), '--file', str(src / '.hidden_file')], env)
     run_quiet([python_exec, '-m', 'fs_copy_tool.main', 'analyze', '--job-dir', str(job_dir), '--dst', str(dst)], env)
     run_quiet([python_exec, '-m', 'fs_copy_tool.main', 'checksum', '--job-dir', str(job_dir), '--table', 'source_files'], env)
     run_quiet([python_exec, '-m', 'fs_copy_tool.main', 'checksum', '--job-dir', str(job_dir), '--table', 'destination_files'], env)

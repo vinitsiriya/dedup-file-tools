@@ -4,3 +4,4 @@ black
 mypy
 wmi
 tqdm
+# No additional dependencies required for stateful CLI features (add-file, add-source, list-files, remove-file)

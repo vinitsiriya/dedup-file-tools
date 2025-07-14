@@ -23,9 +23,11 @@ def test_cli_full_workflow(tmp_path):
     assert result.returncode == 0
     db_path = get_db_path_from_job_dir(job_dir)
     assert os.path.exists(db_path)
-    # 2. Analyze
-    result = run_cli(["analyze", "--job-dir", str(job_dir), "--src", str(src_dir), "--dst", str(dst_dir)])
-    assert result.returncode == 0
+    # 2. Add files using new CLI
+    result = run_cli(["add-source", "--job-dir", str(job_dir), "--src", str(src_dir)])
+    assert "Added" in result.stdout
+    result = run_cli(["list-files", "--job-dir", str(job_dir)])
+    assert "a.txt" in result.stdout and "b.txt" in result.stdout
     # 3. Checksum
     result = run_cli(["checksum", "--job-dir", str(job_dir), "--table", "source_files"])
     assert result.returncode == 0

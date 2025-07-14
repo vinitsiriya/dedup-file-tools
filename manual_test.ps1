@@ -26,8 +26,26 @@ $venvPython = if (Test-Path ".\venv\Scripts\python.exe") { ".\venv\Scripts\pytho
 # Initialize job directory (protocol: always use a dedicated job dir)
 & $venvPython fs_copy_tool/main.py init --job-dir .temp/job
 
-# Analyze source and destination (protocol: must analyze both)
-& $venvPython fs_copy_tool/main.py analyze --job-dir .temp/job --src $src --dst $dst
+# Instead of analyze, use add-source to incrementally add files to the job state
+& $venvPython fs_copy_tool/main.py add-source --job-dir .temp/job --src $src
+
+# Optionally, demonstrate add-file for a single file
+$singleFile = Get-ChildItem $src -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -First 1
+if ($singleFile) {
+    & $venvPython fs_copy_tool/main.py add-file --job-dir .temp/job --file $singleFile.FullName
+}
+
+# List files in the job state
+& $venvPython fs_copy_tool/main.py list-files --job-dir .temp/job
+
+# Remove a file from the job state (demonstrate remove-file)
+if ($singleFile) {
+    & $venvPython fs_copy_tool/main.py remove-file --job-dir .temp/job --file $singleFile.FullName
+    & $venvPython fs_copy_tool/main.py list-files --job-dir .temp/job
+}
+
+# Analyze destination only (since source files are now added incrementally)
+& $venvPython fs_copy_tool/main.py analyze --job-dir .temp/job --dst $dst
 
 # Compute checksums for both source and destination (protocol: both tables)
 & $venvPython fs_copy_tool/main.py checksum --job-dir .temp/job --table source_files --threads 2

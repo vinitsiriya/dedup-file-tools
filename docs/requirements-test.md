@@ -60,6 +60,13 @@ This file contains all requirements and protocols for automated, stress, and edg
 - All test requirements, strategies, and results must be documented and tracked as per agent protocol.
 - Archive and update planning files after each major milestone or change.
 
+## Stateful CLI Testing Requirements (2025-07-14)
+- All CLI and E2E tests MUST cover the new file-level stateful commands:
+  - `add-file`, `add-source`, `list-files`, `remove-file`
+- Tests MUST verify incremental job setup, file addition/removal, and correct operation of all phases after stateful setup.
+- Directory-level state is NOT supported; tests must operate at the file level.
+- Update and maintain all test scripts and documentation to reflect this breaking change.
+
 ---
 
 *Created as part of agent constitution amendment on 2025-07-10*
