@@ -1,6 +1,19 @@
 """
-File: src/utils/uidpath.py
-Description: UidPath class for robust volume and path handling (moved from scan.py)
+UidPath: System-Independent Path Abstraction Utility
+
+This module provides the UidPath class, which enables robust, portable file referencing
+across different operating systems by abstracting filesystem mount points using unique identifiers (UIDs).
+
+- On Windows, UID is the volume serial number (serving as a replacement for the drive letter).
+- On Linux, UID is the filesystem UUID.
+
+The class supports converting absolute file paths to (UID, relative_path) tuples and reconstructing
+absolute paths from these tuples, enabling consistent file tracking across system boundaries.
+
+IMPORTANT:
+- The 'relative_path' returned by convert_path is only guaranteed to be relative to the detected mount point.
+- Its format may be long or look like an absolute path segment, especially in test/temp environments.
+- Only UidPath should interpret or manipulate rel_path; treat it as opaque elsewhere.
 """
 import platform
 import logging
@@ -12,11 +25,32 @@ except ImportError:
     wmi = None
 
 class UidPath:
+    """
+    UidPath provides methods to convert file paths to a (UID, relative_path) tuple and reconstruct
+    absolute paths from these tuples. This abstraction allows for system-independent file referencing.
+
+    UID:
+        - On Windows: The volume serial number (replacement for drive letter, e.g., 'C:').
+        - On Linux: The filesystem UUID.
+    Relative Path:
+        - The path of the file relative to the mount point (drive root or mount directory).
+        - NOTE: The format of relative_path is only guaranteed to be relative to the detected mount point.
+          It may be a long path segment or appear absolute in some environments (e.g., tests/temp dirs).
+        - Only UidPath should interpret or manipulate rel_path; all other code should treat it as opaque.
+    """
     def __init__(self):
+        """
+        Initialize UidPath, detecting the operating system and available mount points.
+        """
         self.os = platform.system()
         self.mounts = self.get_mounts()
 
     def get_mounts(self):
+        """
+        Detect all available mount points and their UIDs for the current system.
+        Returns:
+            dict: Mapping of mount point (str) to UID (str or int).
+        """
         if self.os == "Windows":
             mounts = self.get_mounts_windows()
         elif self.os == "Linux":
@@ -31,6 +65,11 @@ class UidPath:
         return mounts
 
     def get_mounts_linux(self):
+        """
+        Get Linux mount points and their UUIDs using lsblk.
+        Returns:
+            dict: Mapping of mount point to UUID.
+        """
         result = subprocess.run(['lsblk', '-o', 'UUID,MOUNTPOINT', '--noheadings'], capture_output=True, text=True)
         mounts = {}
         for line in result.stdout.splitlines():
@@ -42,6 +81,11 @@ class UidPath:
         return mounts
 
     def get_mounts_windows(self):
+        """
+        Get Windows drive letters and their volume serial numbers using WMI.
+        Returns:
+            dict: Mapping of drive letter (e.g., 'C:\\') to serial number (int or str).
+        """
         if not wmi:
             logging.error("wmi module not available on this system.")
             return {}
@@ -58,19 +102,49 @@ class UidPath:
             return {}
 
     def update_mounts(self):
+        """
+        Refresh the mount point to UID mapping.
+        """
         self.mounts = self.get_mounts()
         logging.info("Mounts have been updated.")
+
     def get_available_volumes(self):
+        """
+        Return the current mapping of mount points to UIDs.
+        Returns:
+            dict: Mapping of mount point to UID.
+        """
         return self.mounts
 
     def is_volume_available(self, uid):
+        """
+        Check if a volume with the given UID is available.
+        Args:
+            uid (str or int): UID to check.
+        Returns:
+            bool: True if available, False otherwise.
+        """
         return int(str(uid)) in self.mounts.values()
 
     def get_volume_id_from_path(self, path):
+        """
+        Get the UID for the given path.
+        Args:
+            path (str): Absolute file path.
+        Returns:
+            str or int: UID for the volume containing the path.
+        """
         _, volume_id = self.convert_path(path)
         return volume_id
 
     def get_mount_point_from_volume_id(self, volume_id):
+        """
+        Given a UID, return the corresponding mount point (drive root or mount directory).
+        Args:
+            volume_id (str or int): UID of the volume.
+        Returns:
+            str: Mount point path, or None if not found.
+        """
         # If the volume_id is a path to an existing directory, treat it as a valid mount (for tests)
         import os
         if os.path.isdir(volume_id):
@@ -86,9 +160,25 @@ class UidPath:
         return None
 
     def get_available_uids(self):
+        """
+        Return a set of all available UIDs.
+        Returns:
+            set: Set of UIDs.
+        """
         return set(self.mounts.values())
 
     def convert_path(self, path):
+        """
+        Convert an absolute file path to a (UID, relative_path) tuple.
+        Args:
+            path (str): Absolute file path.
+        Returns:
+            tuple: (UID, relative_path) where relative_path is relative to the mount point.
+        Notes:
+            - The format of relative_path is only guaranteed to be relative to the detected mount point.
+            - It may be a long path segment or appear absolute in some environments (e.g., tests/temp dirs).
+            - Only UidPath should interpret or manipulate rel_path; all other code should treat it as opaque.
+        """
         path = Path(path).resolve()
         for mountpoint, key in sorted(self.mounts.items(), key=lambda x: -len(x[0])):
             if str(path).startswith(mountpoint):
@@ -97,12 +187,27 @@ class UidPath:
         return None, str(path)
 
     def reconstruct_path(self, key1, relative_path):
+        """
+        Reconstruct an absolute path from a UID and relative path.
+        Args:
+            key1 (str or int): UID of the volume.
+            relative_path (str): Path relative to the mount point.
+        Returns:
+            Path or None: Absolute path if the volume is available, else None.
+        """
         for mountpoint, key in self.mounts.items():
             if key == key1 or key == int(key1):
                 return Path(mountpoint) / relative_path
         return None
 
     def is_conversion_reversible(self, path):
+        """
+        Check if converting and reconstructing a path yields the original absolute path.
+        Args:
+            path (str): Absolute file path.
+        Returns:
+            bool: True if reversible, False otherwise.
+        """
         converted = self.convert_path(path)
         if converted[0] is None:
             return False
@@ -110,6 +215,13 @@ class UidPath:
         return reconstructed == Path(path).resolve()
 
     def get_volume_label_from_drive_letter(self, drive_letter):
+        """
+        Get the volume label for a given drive letter (Windows only).
+        Args:
+            drive_letter (str): Drive letter (e.g., 'C:').
+        Returns:
+            str: Volume label, or 'Unknown' if not found.
+        """
         if not drive_letter :
             return "None"
         if self.os != "Windows":

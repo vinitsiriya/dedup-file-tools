@@ -3,6 +3,8 @@ import sqlite3
 import time
 from pathlib import Path
 from fs_copy_tool.utils.fileops import compute_sha256
+from fs_copy_tool.utils.checksum_cache import ChecksumCache
+from fs_copy_tool.utils.uidpath import UidPath
 
 def shallow_verify_files(db_path, src_roots, dst_roots):
     """Shallow verification: check existence, size, last_modified."""
@@ -50,40 +52,26 @@ def shallow_verify_files(db_path, src_roots, dst_roots):
             conn.commit()
         logging.info(f"Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
 
-def get_checksum_with_cache(cur, table, uid, rel_path):
-    # Try main table first
-    cur.execute(f"SELECT checksum FROM {table} WHERE uid=? AND relative_path=?", (uid, rel_path))
-    row = cur.fetchone()
-    if row and row[0]:
-        return row[0]
-    # Fallback to cache
-    cur.execute("SELECT checksum FROM checksum_cache WHERE uid=? AND relative_path=? ORDER BY imported_at DESC LIMIT 1", (uid, rel_path))
-    row = cur.fetchone()
-    if row and row[0]:
-        return row[0]
-    return None
-
 def deep_verify_files(db_path, src_roots, dst_roots):
-    """Deep verification: compare checksums between source and destination, using cache as fallback."""
+    """Deep verification: compare checksums between source and destination, using cache as the only source of truth."""
     logging.info("Starting deep verification stage...")
     timestamp = int(time.time())
+    uid_path = UidPath()
+    checksum_cache = ChecksumCache(db_path, uid_path)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT uid, relative_path FROM destination_files WHERE copy_status='done'")
+        cur.execute("SELECT uid, relative_path, size, last_modified FROM destination_files WHERE copy_status='done'")
         files = cur.fetchall()
-    for uid, rel_path in files:
+    for uid, rel_path, size, last_modified in files:
+        dst_file = uid_path.reconstruct_path(uid, rel_path)
+        expected_checksum = checksum_cache.get(str(dst_file)) if dst_file else None
         checksum_matched = 0
         verify_status = 'ok'
         verify_error = None
         src_file = None
-        dst_file = None
+        dst_file_actual = None
         src_checksum = None
         dst_checksum = None
-        expected_checksum = None
-        # Get expected checksum (from main or cache)
-        with sqlite3.connect(db_path) as conn:
-            cur = conn.cursor()
-            expected_checksum = get_checksum_with_cache(cur, 'destination_files', uid, rel_path)
         for src_root in src_roots:
             candidate = Path(src_root) / rel_path
             if candidate.exists():
@@ -92,17 +80,17 @@ def deep_verify_files(db_path, src_roots, dst_roots):
         for dst_root in dst_roots:
             candidate = Path(dst_root) / rel_path
             if candidate.exists():
-                dst_file = candidate
+                dst_file_actual = candidate
                 break
         if not src_file or not src_file.exists():
             verify_status = 'error'
             verify_error = 'Source file missing'
-        elif not dst_file or not dst_file.exists():
+        elif not dst_file_actual or not dst_file_actual.exists():
             verify_status = 'error'
             verify_error = 'Destination file missing'
         else:
-            src_checksum = compute_sha256(src_file)
-            dst_checksum = compute_sha256(dst_file)
+            src_checksum = checksum_cache.get_or_compute(str(src_file))
+            dst_checksum = checksum_cache.get_or_compute(str(dst_file_actual))
             if src_checksum == dst_checksum == expected_checksum:
                 checksum_matched = 1
             else:

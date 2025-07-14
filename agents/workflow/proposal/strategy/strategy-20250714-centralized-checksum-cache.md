@@ -47,3 +47,7 @@
 ---
 
 Status: Draft — Awaiting review and refinement.
+
+## Additional Clarifications
+- The tool must update the checksum_cache table on the go, ensuring it always reflects the latest valid checksums for all files as they are processed.
+- Only the storage location of checksums changes; the deduplication, verification, and copy algorithms remain unchanged, referencing the cache instead of per-table columns.

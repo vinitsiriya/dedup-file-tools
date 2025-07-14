@@ -14,33 +14,30 @@ def persist_file_metadata(db_path, table, file_info):
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         cur.execute(f"""
-            INSERT INTO {table} (uid, relative_path, size, last_modified, checksum_stale)
-            VALUES (?, ?, ?, ?, 1)
+            INSERT INTO {table} (uid, relative_path, size, last_modified)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(uid, relative_path) DO UPDATE SET
                 size=excluded.size,
-                last_modified=excluded.last_modified,
-                checksum_stale=1
+                last_modified=excluded.last_modified
         """, (file_info['uid'], file_info['relative_path'], file_info['size'], file_info['last_modified']))
         conn.commit()
 
 def scan_files_on_volume(volume_root, uid_path: UidPath):
-    # If the volume_root is a directory, treat it as its own mount (for tests and general robustness)
-    if os.path.isdir(volume_root):
-        mount_id = volume_root
-        mountpoint = volume_root
-    else:
-        mount_id = uid_path.get_volume_id_from_path(volume_root)
-        mountpoint = uid_path.get_mount_point_from_volume_id(mount_id)
+    # Always use UidPath.convert_path for every file, even in test directories
+    mountpoint = volume_root if os.path.isdir(volume_root) else uid_path.get_mount_point_from_volume_id(uid_path.get_volume_id_from_path(volume_root))
     if not mountpoint:
-        logging.error(f"Mount point not found for volume {mount_id}")
+        logging.error(f"Mount point not found for volume {volume_root}")
         return
     for file in Path(mountpoint).rglob("*"):
         if file.is_file():
-            rel = str(file.relative_to(mountpoint))
+            uid, rel = uid_path.convert_path(str(file))
+            if uid is None:
+                logging.error(f"Could not determine UID for file {file}")
+                continue
             stat = file.stat()
             logging.info(f"[AGENT][ANALYZE] Indexed: {file}")
             yield {
-                'uid': mount_id,
+                'uid': uid,
                 'relative_path': rel,
                 'size': stat.st_size,
                 'last_modified': int(stat.st_mtime)

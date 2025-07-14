@@ -29,3 +29,4 @@ Thumbs.db
 
 # Agent and backup artifacts
 agents/backup/
+.idea

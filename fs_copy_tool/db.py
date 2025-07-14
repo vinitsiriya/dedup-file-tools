@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS source_files (
     relative_path TEXT,
     last_modified INTEGER,
     size INTEGER,
-    checksum TEXT,
-    checksum_stale INTEGER,
     copy_status TEXT, -- 'pending', 'in_progress', 'done', 'error'
     last_copy_attempt INTEGER,
     error_message TEXT,
@@ -21,8 +19,6 @@ CREATE TABLE IF NOT EXISTS destination_files (
     relative_path TEXT,
     last_modified INTEGER,
     size INTEGER,
-    checksum TEXT,
-    checksum_stale INTEGER,
     copy_status TEXT, -- 'pending', 'in_progress', 'done', 'error'
     error_message TEXT,
     PRIMARY KEY (uid, relative_path)
@@ -30,14 +26,19 @@ CREATE TABLE IF NOT EXISTS destination_files (
 CREATE TABLE IF NOT EXISTS checksum_cache (
     uid TEXT,
     relative_path TEXT,
+    size INTEGER,
+    last_modified INTEGER,
     checksum TEXT,
-    source TEXT,
     imported_at INTEGER,
-    PRIMARY KEY (uid, relative_path, source)
+    last_validated INTEGER,
+    is_valid INTEGER DEFAULT 1, -- 1=valid, 0=stale
+    PRIMARY KEY (uid, relative_path)
 );
-CREATE INDEX IF NOT EXISTS idx_source_checksum ON source_files (checksum);
-CREATE INDEX IF NOT EXISTS idx_dest_checksum ON destination_files (checksum);
 CREATE INDEX IF NOT EXISTS idx_source_status ON source_files (copy_status);
+CREATE INDEX IF NOT EXISTS idx_dest_status ON destination_files (copy_status);
+CREATE INDEX IF NOT EXISTS idx_checksum_cache_uid_relpath ON checksum_cache(uid, relative_path);
+CREATE INDEX IF NOT EXISTS idx_checksum_cache_checksum_valid ON checksum_cache(checksum, is_valid);
+CREATE INDEX IF NOT EXISTS idx_dest_uid_relpath_status ON destination_files(uid, relative_path, copy_status);
 
 -- Shallow verification results
 CREATE TABLE IF NOT EXISTS verification_shallow_results (
