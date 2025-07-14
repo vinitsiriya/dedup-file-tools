@@ -39,6 +39,19 @@ def create_tree_with_dups(root: Path):
     (uniques / "unique_1.txt").write_text("UNIQUE_CONTENT_1")
     (uniques / "unique_2.txt").write_text("UNIQUE_CONTENT_2")
 
+def create_tree_with_dupes_in_dirs(root: Path):
+    """Create duplicate files with the same content in different directories for deduplication tests."""
+    # Create two folders with the same file name and content
+    folder_a = root / "dupe_folder_a"
+    folder_b = root / "dupe_folder_b"
+    folder_a.mkdir(parents=True, exist_ok=True)
+    folder_b.mkdir(parents=True, exist_ok=True)
+    (folder_a / "dupe.txt").write_text("DUPLICATE_CONTENT_SAME")
+    (folder_b / "dupe.txt").write_text("DUPLICATE_CONTENT_SAME")
+    # Also add a unique file in each
+    (folder_a / "unique_a.txt").write_text("UNIQUE_A")
+    (folder_b / "unique_b.txt").write_text("UNIQUE_B")
+
 def main():
     parser = argparse.ArgumentParser(description="Generate simple source and dest directory trees for manual testing.")
     parser.add_argument('--src', type=str, default='./manual_src', help='Source directory path')
@@ -61,6 +74,8 @@ def main():
     create_tree(Path(args.dst), 1, 1, 0, prefix="dst_")  # Just a root folder, no files by default
     # Create source tree with clear dups and uniques for manual deduplication test
     create_tree_with_dups(Path(args.src))
+    # Create source tree with duplicate files in different directories
+    create_tree_with_dupes_in_dirs(Path(args.src))
 
     logging.basicConfig(level=logging.INFO)
     logging.debug(f"Source tree created at: {args.src}")

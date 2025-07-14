@@ -93,6 +93,20 @@ This directory contains the canonical workflow protocol documentation for the pr
 
 ---
 
+### User Story and Proposal Closure & Archival Protocol
+
+- When a user story or proposal is marked as closed (upon user request or completion):
+  - Update the status file for the user story and/or proposal to reflect closure and verification.
+  - Move all related user story, task, and notes files to the appropriate `archived/` subdirectory, using a date-stamped folder (e.g., `archived/YYYY-MM-DD-<desc>`).
+  - Move the proposal file to the corresponding `archived/` proposal directory.
+  - Use the provided script `scripts/archive_agents.ps1` to automate the archival and cleanup process. This script ensures all files are moved correctly and the workflow directory remains organized.
+  - Ensure all links and references are preserved or updated as needed.
+  - Log the archival action in the status file.
+  - The codebase and workflow directory must remain free of obsolete, unarchived, or orphaned files.
+- This ensures a clean, auditable, and well-organized workflow history, and prevents clutter or confusion from completed work.
+
+---
+
 ## Archival Protocol
 
 - After each major commit, milestone, or significant work session, all workflow and planning `.md` files in this directory must be archived.

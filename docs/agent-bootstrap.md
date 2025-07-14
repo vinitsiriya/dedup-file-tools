@@ -1,38 +1,20 @@
 # Agent Bootstrap: docs Directory Guide
 
-This file explains the purpose and update process for documentation files found specifically in the `docs` directory.
+This file provides strict instructions for agents on how and when to load documentation from the `docs` directory.
 
 ---
 
-## Files in the `docs` Directory
+## Bootstrap Protocol for Documentation
 
-- **`docs/agent-bootstrap.md`** (this file):
-  - Overview of documentation in the `docs` directory and how to update it.
-
-- **`docs/requirements.md`**:
-  - Contains the main project requirements.
-  - Update this file whenever new requirements are added or existing ones change.
-
-- **`docs/requirements-test.md`**:
-  - Contains requirements and guidelines for testing.
-  - Update this file when test requirements or testing strategies change.
+- **Always consult `docs/index.md` first** to locate the correct documentation file for your task.
+- **Before performing any task related to requirements, testing, CLI, or manual/integration/unit tests,** you MUST:
+  1. Identify the relevant documentation file(s) in `docs/` using `index.md`.
+  2. Load and review the full contents of those files.
+  3. Ensure your working memory is up to date with the latest documentation before proceeding.
+- **Never assume you remember the documentation.** Always check the relevant doc again before starting or continuing any related task.
+- If you are unsure or have not checked the doc for your current task, STOP and review the appropriate file(s) in `docs/`.
+- Failure to follow this protocol is a violation of project rules and may result in errors or omissions.
 
 ---
 
-## How to Update Files in `docs`
-
-1. **General Documentation:**
-   - Use `docs/agent-bootstrap.md` to provide a high-level guide for documentation in the `docs` directory.
-   - Update this file if the structure or purpose of documentation in `docs` changes.
-
-2. **Requirements:**
-   - Edit `docs/requirements.md` to add, remove, or clarify project requirements.
-   - Ensure all requirements are clear, actionable, and up to date.
-
-3. **Test Requirements:**
-   - Edit `docs/requirements-test.md` to reflect current testing needs and practices.
-   - Keep this file synchronized with the project's evolving test strategy.
-
----
-
-_Only documentation files in the `docs` directory are covered here. For other project documentation, refer to the relevant directories._
+_This file does not list or summarize documentation. For a full list, see `docs/index.md`. For other project documentation, refer to the relevant directories._
