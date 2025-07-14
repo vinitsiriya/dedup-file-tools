@@ -9,6 +9,7 @@ from fs_copy_tool.utils.fileops import compute_sha256
 from pathlib import Path
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 def update_checksums(db_path, table, threads=4):
     uid_path = UidPath()
@@ -64,3 +65,28 @@ def import_checksums_from_old_db(new_db_path, old_db_path, table):
                 pbar.update(1)
             new_conn.commit()
     return updates
+
+def import_checksums_to_cache(new_db_path, old_db_path, table, source='old_db'):
+    """
+    Import checksum values from old_db_path into the checksum_cache table in new_db_path for the given table.
+    Does NOT update source_files/destination_files directly.
+    """
+    with sqlite3.connect(old_db_path) as old_conn, sqlite3.connect(new_db_path) as new_conn:
+        old_cur = old_conn.cursor()
+        new_cur = new_conn.cursor()
+        old_cur.execute(f"SELECT uid, relative_path, checksum FROM {table} WHERE checksum IS NOT NULL")
+        all_rows = old_cur.fetchall()
+        inserts = 0
+        with tqdm(total=len(all_rows), desc=f"Importing checksums to cache") as pbar:
+            for uid, rel_path, checksum in all_rows:
+                # Insert into checksum_cache if not already present
+                new_cur.execute(
+                    """
+                    INSERT OR IGNORE INTO checksum_cache (uid, relative_path, checksum, source, imported_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """, (uid, rel_path, checksum, source, int(time.time()))
+                )
+                inserts += 1
+                pbar.update(1)
+            new_conn.commit()
+    return inserts

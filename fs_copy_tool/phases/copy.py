@@ -83,6 +83,17 @@ def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
         """, (status, error_message, uid, rel_path))
         conn.commit()
 
+def get_checksum_with_cache(cur, table, uid, rel_path):
+    cur.execute(f"SELECT checksum FROM {table} WHERE uid=? AND relative_path=?", (uid, rel_path))
+    row = cur.fetchone()
+    if row and row[0]:
+        return row[0]
+    cur.execute("SELECT checksum FROM checksum_cache WHERE uid=? AND relative_path=? ORDER BY imported_at DESC LIMIT 1", (uid, rel_path))
+    row = cur.fetchone()
+    if row and row[0]:
+        return row[0]
+    return None
+
 def copy_files(db_path, src_roots, dst_roots, threads=4):
     import os
     import sys
@@ -90,14 +101,12 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     print(f"[DEBUG] copy_files: db_path={db_path}, src_roots={src_roots}, dst_roots={dst_roots}", file=sys.stderr)
     sys.stderr.flush()
     uid_path = UidPath()
-    # Normalize all src_roots for robust matching
     src_roots = [str(Path(root).resolve()) for root in (src_roots or [])]
     reset_status_for_missing_files(db_path, dst_roots)
-    time.sleep(0.1)  # Ensure DB changes are visible (Windows workaround)
+    time.sleep(0.1)
     pending = get_pending_copies(db_path)
     if not pending:
         return
-    # Build a set of all checksums already present on disk in the destination
     checksums_on_disk = set()
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
@@ -111,6 +120,11 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     copied_lock = Lock()
     def process_copy(args):
         uid, rel_path, size, last_modified, checksum = args
+        # Use cache as fallback for missing checksum
+        if not checksum:
+            with sqlite3.connect(db_path) as conn:
+                cur = conn.cursor()
+                checksum = get_checksum_with_cache(cur, 'source_files', uid, rel_path)
         if not checksum:
             mark_copy_status(db_path, uid, rel_path, 'error', 'No checksum')
             logging.error(f"[AGENT][COPY] Skipped (no checksum): {rel_path}")

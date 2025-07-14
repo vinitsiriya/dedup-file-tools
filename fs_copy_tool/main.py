@@ -10,7 +10,7 @@ import sqlite3
 from pathlib import Path
 from fs_copy_tool.db import init_db
 from fs_copy_tool.phases.analysis import analyze_volumes
-from fs_copy_tool.phases.checksum import update_checksums, import_checksums_from_old_db
+from fs_copy_tool.phases.checksum import update_checksums, import_checksums_from_old_db, import_checksums_to_cache
 from fs_copy_tool.phases.copy import copy_files
 from fs_copy_tool.phases.verify import shallow_verify_files, deep_verify_files
 from fs_copy_tool.utils.uidpath import UidPath
@@ -216,8 +216,8 @@ def main():
         return
     elif args.command == 'import-checksums':
         db_path = get_db_path_from_job_dir(args.job_dir)
-        updates = import_checksums_from_old_db(db_path, args.old_db, args.table)
-        print(f"Imported {updates} checksums from {args.old_db} into {db_path} [{args.table}]")
+        inserts = import_checksums_to_cache(db_path, args.old_db, args.table)
+        print(f"Imported {inserts} checksums from {args.old_db} into checksum_cache in {db_path} [{args.table}]")
         return
     elif args.command == 'analyze':
         db_path = get_db_path_from_job_dir(args.job_dir)

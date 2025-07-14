@@ -83,6 +83,14 @@ deep-verify-status-summary --job-dir <path>
 deep-verify-status-full --job-dir <path>
 ```
 
+### import-checksums
+Import checksums from an old SQLite database into the checksum cache table. These imported checksums are used as a fallback when the main tables are missing a checksum.
+```
+import-checksums --job-dir <path> --old-db <old_db_path> --table <source_files|destination_files>
+```
+- Imported checksums are stored in the `checksum_cache` table, not in `source_files` or `destination_files`.
+- All phases (copy, verify, etc.) will use the cache as a fallback if the main table is missing a checksum.
+
 ## Best Practices
 - Always use a dedicated job directory for each migration session.
 - Use the `status` and `log` commands to monitor progress and troubleshoot issues.

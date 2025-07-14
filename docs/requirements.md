@@ -91,6 +91,18 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 ---
 
+### Import Checksum Cache Phase
+
+* **Objective:**
+  Import externally provided checksums into a dedicated `checksum_cache` table for use as a fallback.
+
+* **Process:**
+  * Use the `import-checksums` CLI command to import checksums from an old database or manifest.
+  * Imported checksums are stored in the `checksum_cache` table, not in the main tables.
+  * All phases (copy, verify, etc.) will use the cache as a fallback if the main table is missing a checksum.
+
+---
+
 ## Database Schema
 
 ### `source_files` Table
@@ -122,12 +134,28 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 | error_message   | TEXT                  | Error message if file couldn't be scanned/checked         |
 | PRIMARY KEY     | (uid, relative_path)  |                                                           |
 
+### `checksum_cache` Table (NEW)
+
+| Column              | Type                  | Description                                          |
+| ------------------- | --------------------- | ---------------------------------------------------- |
+| uid                 | TEXT                  | Source volume unique identifier (UUID or Serial No.) |
+| relative_path       | TEXT                  | File path relative to volume root                    |
+| last_modified       | INTEGER               | Last modified timestamp (epoch)                      |
+| size                | INTEGER               | File size in bytes                                   |
+| checksum            | TEXT                  | SHA-256 checksum                                     |
+| checksum_stale      | INTEGER               | 1 if checksum needs recalculation, 0 if up-to-date   |
+| copy_status         | TEXT                  | 'pending', 'in_progress', 'done', 'error'            |
+| last_copy_attempt   | INTEGER               | Timestamp of last copy attempt                       |
+| error_message       | TEXT                  | Last error message, if any                           |
+| PRIMARY KEY         | (uid, relative_path)  |                                                      |
+
 #### Indexes
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_source_checksum ON source_files (checksum);
 CREATE INDEX IF NOT EXISTS idx_dest_checksum ON destination_files (checksum);
 CREATE INDEX IF NOT EXISTS idx_source_status ON source_files (copy_status);
+CREATE INDEX IF NOT EXISTS idx_cache_checksum ON checksum_cache (checksum);
 ```
 
 ---

@@ -27,6 +27,14 @@ CREATE TABLE IF NOT EXISTS destination_files (
     error_message TEXT,
     PRIMARY KEY (uid, relative_path)
 );
+CREATE TABLE IF NOT EXISTS checksum_cache (
+    uid TEXT,
+    relative_path TEXT,
+    checksum TEXT,
+    source TEXT,
+    imported_at INTEGER,
+    PRIMARY KEY (uid, relative_path, source)
+);
 CREATE INDEX IF NOT EXISTS idx_source_checksum ON source_files (checksum);
 CREATE INDEX IF NOT EXISTS idx_dest_checksum ON destination_files (checksum);
 CREATE INDEX IF NOT EXISTS idx_source_status ON source_files (copy_status);

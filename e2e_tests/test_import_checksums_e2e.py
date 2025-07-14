@@ -59,10 +59,10 @@ def test_import_checksums_e2e(tmp_path):
     create_old_db(old_db_path, uid, rel_path, size, last_modified, checksum)
     # Import checksums
     subprocess.run([sys.executable, "fs_copy_tool/main.py", "import-checksums", "--job-dir", str(job), "--old-db", str(old_db_path), "--table", "source_files"], check=True)
-    # Check that checksum is present in new db
+    # Check that checksum is present in the checksum_cache table (new behavior)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT checksum FROM source_files WHERE relative_path=?", (rel_path,))
+        cur.execute("SELECT checksum FROM checksum_cache WHERE relative_path=?", (rel_path,))
         row = cur.fetchone()
-        assert row is not None, f"No entry found for imported file with rel_path={rel_path}"
-        assert row[0] == checksum, f"Checksum mismatch: expected {checksum}, got {row[0]}"
+        assert row is not None, f"No entry found for imported file with rel_path={rel_path} in checksum_cache"
+        assert row[0] == checksum, f"Checksum mismatch in cache: expected {checksum}, got {row[0]}"

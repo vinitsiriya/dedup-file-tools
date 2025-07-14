@@ -50,15 +50,28 @@ def shallow_verify_files(db_path, src_roots, dst_roots):
             conn.commit()
         logging.info(f"Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
 
+def get_checksum_with_cache(cur, table, uid, rel_path):
+    # Try main table first
+    cur.execute(f"SELECT checksum FROM {table} WHERE uid=? AND relative_path=?", (uid, rel_path))
+    row = cur.fetchone()
+    if row and row[0]:
+        return row[0]
+    # Fallback to cache
+    cur.execute("SELECT checksum FROM checksum_cache WHERE uid=? AND relative_path=? ORDER BY imported_at DESC LIMIT 1", (uid, rel_path))
+    row = cur.fetchone()
+    if row and row[0]:
+        return row[0]
+    return None
+
 def deep_verify_files(db_path, src_roots, dst_roots):
-    """Deep verification: compare checksums between source and destination."""
+    """Deep verification: compare checksums between source and destination, using cache as fallback."""
     logging.info("Starting deep verification stage...")
     timestamp = int(time.time())
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT uid, relative_path, checksum FROM destination_files WHERE copy_status='done'")
+        cur.execute("SELECT uid, relative_path FROM destination_files WHERE copy_status='done'")
         files = cur.fetchall()
-    for uid, rel_path, expected_checksum in files:
+    for uid, rel_path in files:
         checksum_matched = 0
         verify_status = 'ok'
         verify_error = None
@@ -66,6 +79,11 @@ def deep_verify_files(db_path, src_roots, dst_roots):
         dst_file = None
         src_checksum = None
         dst_checksum = None
+        expected_checksum = None
+        # Get expected checksum (from main or cache)
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            expected_checksum = get_checksum_with_cache(cur, 'destination_files', uid, rel_path)
         for src_root in src_roots:
             candidate = Path(src_root) / rel_path
             if candidate.exists():
