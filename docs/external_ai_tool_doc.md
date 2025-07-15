@@ -1,4 +1,4 @@
-# fs-copy-tool: Complete Documentation for AI Tool Integration
+# fs-copy-tool: Portable Documentation for AI Tool Integration
 
 ## Overview
 `fs-copy-tool` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
@@ -11,89 +11,40 @@
 - Verification phases (shallow and deep) ensure data integrity after copy.
 - All operations, errors, and results are queryable and auditable via the database and CLI.
 
-## Import Checksums Feature (Full Implementation)
-The import checksums feature is implemented as follows:
+## Import Checksums Feature (2025-07-15: Current Implementation)
+The import checksums feature allows you to import file checksums from another compatible job database, enabling fast migration and verification across jobs.
 
 - **Command:**
   ```
-  import-checksums --job-dir <path> --old-db <old_db_path> [--table <source_files|destination_files>]
+  import-checksums --job-dir <path> --other-db <other_db_path>
   ```
 - **How it works:**
-  1. The user specifies the current job directory (`--job-dir`) and the path to an old SQLite database (`--old-db`).
-  2. The tool opens the old database and reads the specified table (`source_files` or `destination_files`).
-  3. For each file entry in the old table, it extracts:
+  1. Specify the current job directory (`--job-dir`) and the path to another compatible SQLite database (`--other-db`).
+  2. The tool reads the `checksum_cache` table from the other database (legacy table import is not supported).
+  3. For each entry, it extracts:
      - `uid` (volume identifier)
      - `relative_path` (path relative to volume root)
      - `size` (file size)
      - `last_modified` (modification time)
      - `checksum` (SHA-256 hash)
+     - `imported_at`, `last_validated`, `is_valid` (if present)
   4. It inserts or updates these values into the `checksum_cache` table in the current job's database, along with an import timestamp and validation status.
-  5. The `checksum_cache` table is then used as a fallback for all copy and verification operations: if a file in the current job does not have a checksum in the main tables, the tool will look it up in the cache and use it if available and valid.
+  5. The `checksum_cache` table is used as a fallback for all copy and verification operations: if a file in the current job does not have a checksum in the main tables, the tool will look it up in the cache and use it if available and valid.
   6. The cache is indexed for fast lookup by checksum and (uid, relative_path).
   7. This process is robust and idempotent: repeated imports will not create duplicates, and only the latest valid checksum is used.
 
-- **Relevant code locations:**
-  - CLI command and argument parsing: `fs_copy_tool/main.py` (see `import-checksums` command)
-  - Database schema and cache table: `fs_copy_tool/db.py` (see `checksum_cache` table definition)
-  - Import logic: implemented in the handler for the `import-checksums` command in `main.py`
-
 - **Example usage:**
   ```
-  .venv\Scripts\python.exe fs_copy_tool/main.py import-checksums --job-dir .copy-task --old-db old_job/copytool.db --table source_files
+  python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --other-db <other_job_dir>/copytool.db
   ```
-  This will import all checksums from the `source_files` table in the old job's database into the current job's `checksum_cache`.
+  This will import all checksums from the `checksum_cache` table in the other job's database into the current job's `checksum_cache`.
 
 - **Benefits:**
   - Avoids recomputing checksums for files that have not changed.
   - Greatly speeds up migration and verification for large datasets.
   - Ensures continuity and auditability across multiple migration jobs.
 
-## Database Schema: Old vs. New
-
-### Old Database Schema (prior jobs)
-Typically, the old database used for import will have at least the following tables:
-
-- **source_files**
-  - `uid` TEXT
-  - `relative_path` TEXT
-  - `last_modified` INTEGER
-  - `size` INTEGER
-  - `checksum` TEXT (may be present)
-  - (other columns: `copy_status`, `last_copy_attempt`, `error_message`)
-  - PRIMARY KEY (`uid`, `relative_path`)
-
-- **destination_files**
-  - `uid` TEXT
-  - `relative_path` TEXT
-  - `last_modified` INTEGER
-  - `size` INTEGER
-  - `checksum` TEXT (may be present)
-  - (other columns: `copy_status`, `error_message`)
-  - PRIMARY KEY (`uid`, `relative_path`)
-
-- Indexes may exist on `checksum`, `copy_status`, etc.
-
-### New Database Schema (current job, as of 2025-07-15)
-Defined in `fs_copy_tool/db.py`:
-
-- **source_files**
-  - `uid` TEXT
-  - `relative_path` TEXT
-  - `last_modified` INTEGER
-  - `size` INTEGER
-  - `copy_status` TEXT
-  - `last_copy_attempt` INTEGER
-  - `error_message` TEXT
-  - PRIMARY KEY (`uid`, `relative_path`)
-
-- **destination_files**
-  - `uid` TEXT
-  - `relative_path` TEXT
-  - `last_modified` INTEGER
-  - `size` INTEGER
-  - `copy_status` TEXT
-  - `error_message` TEXT
-  - PRIMARY KEY (`uid`, `relative_path`)
+## Database Schema
 
 - **checksum_cache**
   - `uid` TEXT
@@ -106,35 +57,7 @@ Defined in `fs_copy_tool/db.py`:
   - `is_valid` INTEGER DEFAULT 1
   - PRIMARY KEY (`uid`, `relative_path`)
 
-- **verification_shallow_results**
-  - `uid` TEXT
-  - `relative_path` TEXT
-  - `exists` INTEGER
-  - `size_matched` INTEGER
-  - `last_modified_matched` INTEGER
-  - `expected_size` INTEGER
-  - `actual_size` INTEGER
-  - `expected_last_modified` INTEGER
-  - `actual_last_modified` INTEGER
-  - `verify_status` TEXT
-  - `verify_error` TEXT
-  - `timestamp` INTEGER
-  - PRIMARY KEY (`uid`, `relative_path`, `timestamp`)
-
-- **verification_deep_results**
-  - `uid` TEXT
-  - `relative_path` TEXT
-  - `checksum_matched` INTEGER
-  - `expected_checksum` TEXT
-  - `src_checksum` TEXT
-  - `dst_checksum` TEXT
-  - `verify_status` TEXT
-  - `verify_error` TEXT
-  - `timestamp` INTEGER
-  - PRIMARY KEY (`uid`, `relative_path`, `timestamp`)
-
-- **Indexes**
-  - On `copy_status`, `checksum`, and (`uid`, `relative_path`) for fast lookups and robust state tracking.
+(Other tables: `source_files`, `destination_files`, `verification_shallow_results`, `verification_deep_results` are also present for job state and verification.)
 
 ## Key Features
 - Block-wise (4KB) file copying with SHA-256 checksums
@@ -156,12 +79,12 @@ Defined in `fs_copy_tool/db.py`:
 5. **Copy** only non-duplicate files from source to destination.
 6. **Resume** interrupted or failed jobs safely.
 7. **Verify** and audit all copy operations (shallow and deep verification).
-8. **Import checksums** from old databases if needed.
+8. **Import checksums** from another compatible database if needed (from `checksum_cache` only).
 
 ## CLI Usage
 All commands are run via Python (use the virtual environment if available):
 ```
-.venv\Scripts\python.exe fs_copy_tool/main.py <command> [options]
+python fs_copy_tool/main.py <command> [options]
 ```
 Or, if installed as a package:
 ```
@@ -170,7 +93,7 @@ fs-copy-tool <command> [options]
 
 ### Main Commands & Options
 - `init --job-dir <path>`
-- `import-checksums --job-dir <path> --old-db <old_db_path> [--table <source_files|destination_files>]`
+- `import-checksums --job-dir <path> --other-db <other_db_path>`
 - `analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]`
 - `checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]`
 - `copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]`
@@ -193,15 +116,16 @@ fs-copy-tool <command> [options]
 ### Example Workflow
 ```
 pip install -r requirements.txt
-.venv\Scripts\python.exe fs_copy_tool/main.py init --job-dir .copy-task
-.venv\Scripts\python.exe fs_copy_tool/main.py add-source --job-dir .copy-task --src <SRC_ROOT>
-.venv\Scripts\python.exe fs_copy_tool/main.py analyze --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
-.venv\Scripts\python.exe fs_copy_tool/main.py checksum --job-dir .copy-task --table source_files
-.venv\Scripts\python.exe fs_copy_tool/main.py checksum --job-dir .copy-task --table destination_files
-.venv\Scripts\python.exe fs_copy_tool/main.py copy --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
-.venv\Scripts\python.exe fs_copy_tool/main.py status --job-dir .copy-task
-.venv\Scripts\python.exe fs_copy_tool/main.py verify --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
-.venv\Scripts\python.exe fs_copy_tool/main.py deep-verify --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py init --job-dir <job_dir>
+python fs_copy_tool/main.py add-source --job-dir <job_dir> --src <SRC_ROOT>
+python fs_copy_tool/main.py analyze --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py checksum --job-dir <job_dir> --table source_files
+python fs_copy_tool/main.py checksum --job-dir <job_dir> --table destination_files
+python fs_copy_tool/main.py copy --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py status --job-dir <job_dir>
+python fs_copy_tool/main.py verify --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py deep-verify --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --other-db <other_job_dir>/copytool.db
 ```
 
 ## Edge Cases & Robustness
@@ -211,9 +135,8 @@ pip install -r requirements.txt
 - All operations are auditable and stateful
 
 ## Testing
-- Run all tests with `./scripts/test.ps1` (Windows) or `./scripts/test.sh` (Linux/macOS)
+- Run all tests with your preferred test runner (e.g., `pytest`)
 - Full E2E, integration, and unit test coverage for all features and edge cases
-- See `docs/requirements-test.md` for detailed test protocols and scenarios
 
 ## Project Structure
 - `fs_copy_tool/` — Main source code
@@ -222,12 +145,6 @@ pip install -r requirements.txt
 - `docs/` — Documentation
 - `scripts/` — Automation scripts
 - `Taskfile.yml` — Cross-platform automation tasks
-
-## Requirements & Protocols
-- See `docs/requirements.md` for full requirements and design
-- See `docs/requirements-test.md` for test requirements
-- See `docs/cli.md` for detailed CLI reference
-- See `AGENTS.md` for agent workflow protocols
 
 ## Packaging & Installation
 - Standard Python packaging via `setup.py` and `pyproject.toml`

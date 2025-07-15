@@ -113,11 +113,10 @@ def parse_args(args=None):
     parser_init = subparsers.add_parser('init', help='Initialize a new job directory')
     parser_init.add_argument('--job-dir', required=True, help='Path to job directory')
 
-    # Import checksums command
-    parser_import = subparsers.add_parser('import-checksums', help='Import checksums from an old SQLite database')
+    # Import checksums command (simplified, only from checksum_cache)
+    parser_import = subparsers.add_parser('import-checksums', help='Import checksums from the checksum_cache table of another compatible database')
     parser_import.add_argument('--job-dir', required=True, help='Path to job directory')
-    parser_import.add_argument('--old-db', required=True, help='Path to old SQLite database')
-    parser_import.add_argument('--table', choices=['source_files', 'destination_files'], default='source_files', help='Table to import into')
+    parser_import.add_argument('--other-db', required=True, help='Path to other compatible SQLite database (must have checksum_cache table)')
 
     # Analyze, checksum, copy, etc. commands
     parser_analyze = subparsers.add_parser('analyze', help='Analyze source/destination volumes')
@@ -359,9 +358,35 @@ def handle_checksum(args):
                 pbar.update(1)
     return 0
 
+def handle_import_checksums(args):
+    db_path = get_db_path_from_job_dir(args.job_dir)
+    other_db_path = args.other_db
+    # Validate schema of other_db
+    with sqlite3.connect(other_db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checksum_cache'")
+        if not cur.fetchone():
+            print(f"Error: The other database does not have a checksum_cache table.", file=sys.stderr)
+            sys.exit(1)
+        # Import all rows from other checksum_cache
+        cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
+        rows = cur.fetchall()
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.cursor()
+        for row in rows:
+            cur.execute("""
+                INSERT OR REPLACE INTO checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, row)
+        conn.commit()
+    print(f"Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
+    return 0
+
 def run_main_command(args):
     if args.command == 'init':
         return handle_init(args)
+    elif args.command == 'import-checksums':
+        return handle_import_checksums(args)
     elif args.command == 'analyze':
         return handle_analyze(args)
     elif args.command == 'checksum':
