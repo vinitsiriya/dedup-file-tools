@@ -19,10 +19,17 @@ Initialize a new job directory and database.
 init --job-dir <path>
 ```
 
-### analyze
-Scan source and destination volumes, gather file metadata, and update the database.
+### import-checksums
+Import checksums from an old SQLite database into the checksum cache table. These imported checksums are used as a fallback when the main tables are missing a checksum.
 ```
-analyze --job-dir <path> --src <src_dir> --dst <dst_dir>
+import-checksums --job-dir <path> --old-db <old_db_path> [--table <source_files|destination_files>]
+```
+- `--table` defaults to `source_files` if not specified.
+
+### analyze
+Scan source and/or destination volumes, gather file metadata, and update the database.
+```
+analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
 ```
 
 ### checksum
@@ -30,17 +37,20 @@ Compute and update checksums for files in the database.
 ```
 checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]
 ```
+- `--threads` defaults to 4.
+- `--no-progress` disables the progress bar.
 
 ### copy
 Copy files from source to destination. Skips already completed files and resumes incomplete jobs by default.
 ```
-copy --job-dir <path> --src <src_dir> --dst <dst_dir> [--threads N] [--no-progress] [--resume]
+copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]
 ```
+- `--resume` is always enabled by default and can be omitted.
 
 ### resume
 Alias for `copy`. Retries pending/error files and skips completed ones.
 ```
-resume --job-dir <path> --src <src_dir> --dst <dst_dir> [--threads N] [--no-progress]
+resume --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]
 ```
 
 ### status
@@ -56,40 +66,77 @@ log --job-dir <path>
 ```
 
 ### verify
-Shallow verify: check existence, size, last_modified.
+Shallow or deep verify: check existence, size, last_modified, or checksums.
 ```
-verify --job-dir <path> --src <src_dir> --dst <dst_dir>
+verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--stage <shallow|deep>]
 ```
+- `--stage` defaults to `shallow`.
 
 ### deep-verify
 Deep verify: compare checksums between source and destination.
 ```
-deep-verify --job-dir <path> --src <src_dir> --dst <dst_dir>
+deep-verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
 ```
 
-### verify-status, verify-status-summary, verify-status-full
-Show shallow verification results (summary or full history).
+### verify-status
+Show a summary of the latest shallow verification results for each file.
 ```
 verify-status --job-dir <path>
+```
+
+### deep-verify-status
+Show a summary of the latest deep verification results for each file.
+```
+deep-verify-status --job-dir <path>
+```
+
+### verify-status-summary
+Show a short summary of the latest shallow verification results for each file.
+```
 verify-status-summary --job-dir <path>
+```
+
+### verify-status-full
+Show all shallow verification results (full history).
+```
 verify-status-full --job-dir <path>
 ```
 
-### deep-verify-status, deep-verify-status-summary, deep-verify-status-full
-Show deep verification results (summary or full history).
+### deep-verify-status-summary
+Show a short summary of the latest deep verification results for each file.
 ```
-deep-verify-status --job-dir <path>
 deep-verify-status-summary --job-dir <path>
+```
+
+### deep-verify-status-full
+Show all deep verification results (full history).
+```
 deep-verify-status-full --job-dir <path>
 ```
 
-### import-checksums
-Import checksums from an old SQLite database into the checksum cache table. These imported checksums are used as a fallback when the main tables are missing a checksum.
+### add-file
+Add a single file to the job state/database.
 ```
-import-checksums --job-dir <path> --old-db <old_db_path> --table <source_files|destination_files>
+add-file --job-dir <path> --file <file_path>
 ```
-- Imported checksums are stored in the `checksum_cache` table, not in `source_files` or `destination_files`.
-- All phases (copy, verify, etc.) will use the cache as a fallback if the main table is missing a checksum.
+
+### add-source
+Recursively add all files from a directory to the job state/database.
+```
+add-source --job-dir <path> --src <src_dir>
+```
+
+### list-files
+List all files currently in the job state/database.
+```
+list-files --job-dir <path>
+```
+
+### remove-file
+Remove a file from the job state/database.
+```
+remove-file --job-dir <path> --file <file_path>
+```
 
 ## Best Practices
 - Always use a dedicated job directory for each migration session.
@@ -101,6 +148,8 @@ import-checksums --job-dir <path> --old-db <old_db_path> --table <source_files|d
 ## Example Workflow
 ```
 .venv\Scripts\python.exe fs_copy_tool/main.py init --job-dir .temp/job
+.venv\Scripts\python.exe fs_copy_tool/main.py add-source --job-dir .temp/job --src .temp/src
+.venv\Scripts\python.exe fs_copy_tool/main.py list-files --job-dir .temp/job
 .venv\Scripts\python.exe fs_copy_tool/main.py analyze --job-dir .temp/job --src .temp/src --dst .temp/dst
 .venv\Scripts\python.exe fs_copy_tool/main.py checksum --job-dir .temp/job --table source_files
 .venv\Scripts\python.exe fs_copy_tool/main.py checksum --job-dir .temp/job --table destination_files

@@ -56,9 +56,13 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
     * Set status to `'in_progress'`.
     * Copy the file from source to destination (preserving relative path as needed).
-    * After copying, optionally verify file integrity (size or checksum).
+    * After copying, verify file integrity (size or checksum).
     * On success, mark as `'done'` in both tables and insert or update in `destination_files`.
     * On error, mark as `'error'` and record the error message.
+  * **Edge Cases:**
+    * Already copied files are always skipped (deduplication).
+    * Corrupted files are not fixed by resume/copy logic; errors are reported and must be handled manually.
+    * Partial/incomplete copies are detected and retried on resume.
 
 ---
 
@@ -71,10 +75,11 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
   * At any time, the tool resumes by inspecting the database for any file with `copy_status = 'pending'` or `'error'` and only attempts those files in subsequent runs.
   * Files with `copy_status = 'done'` are never re-copied or re-processed unless their source metadata changes.
+  * All resume/copy operations must be idempotent and safe to repeat.
 
 ---
 
-### 5. Stateful, File-Level Job Setup (NEW)
+### 5. Stateful, File-Level Job Setup
 
 * **Objective:**
   Support incremental, auditable job setup and modification at the file level.
@@ -91,15 +96,64 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 ---
 
-### Import Checksum Cache Phase
+### 6. Verification & Audit Phases (NEW)
+
+* **Objective:**
+  Provide robust verification and auditability of all copy operations.
+
+* **Process:**
+
+  * Support CLI commands for verification:
+    * `verify` — Shallow or deep verify: check existence, size, last_modified, or checksums.
+    * `deep-verify` — Deep verify: compare checksums between source and destination.
+    * `verify-status`, `verify-status-summary`, `verify-status-full` — Show shallow verification results (summary or full history).
+    * `deep-verify-status`, `deep-verify-status-summary`, `deep-verify-status-full` — Show deep verification results (summary or full history).
+  * Support CLI commands for job status and audit:
+    * `status` — Show job progress and statistics.
+    * `log` — Show job log or audit trail.
+  * All verification and audit results must be persisted and queryable.
+
+---
+
+### 7. Import Checksum Cache Phase
 
 * **Objective:**
   Import externally provided checksums into a dedicated `checksum_cache` table for use as a fallback.
 
 * **Process:**
+
   * Use the `import-checksums` CLI command to import checksums from an old database or manifest.
   * Imported checksums are stored in the `checksum_cache` table, not in the main tables.
   * All phases (copy, verify, etc.) will use the cache as a fallback if the main table is missing a checksum.
+
+---
+
+## CLI Command Requirements
+
+The following CLI commands and options must be implemented and maintained:
+
+* `init --job-dir <path>`
+* `import-checksums --job-dir <path> --old-db <old_db_path> [--table <source_files|destination_files>]`
+* `analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]`
+* `checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]`
+* `copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]`
+* `resume --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]`
+* `status --job-dir <path>`
+* `log --job-dir <path>`
+* `verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--stage <shallow|deep>]`
+* `deep-verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]`
+* `verify-status --job-dir <path>`
+* `deep-verify-status --job-dir <path>`
+* `verify-status-summary --job-dir <path>`
+* `verify-status-full --job-dir <path>`
+* `deep-verify-status-summary --job-dir <path>`
+* `deep-verify-status-full --job-dir <path>`
+* `add-file --job-dir <path> --file <file_path>`
+* `add-source --job-dir <path> --src <src_dir>`
+* `list-files --job-dir <path>`
+* `remove-file --job-dir <path> --file <file_path>`
+
+All commands must be robust, auditable, and support full state persistence in the job directory.
 
 ---
 
@@ -190,6 +244,7 @@ CREATE INDEX IF NOT EXISTS idx_cache_checksum ON checksum_cache (checksum);
 ---
 
 ## Test Requirements
+
 - All detailed requirements and protocols for automated, stress, and edge-case testing are maintained in `requirements-test.md`.
 - This file (`requirements.md`) will reference `requirements-test.md` for all test-related requirements.
 

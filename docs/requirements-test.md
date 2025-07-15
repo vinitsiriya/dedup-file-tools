@@ -23,14 +23,43 @@ This file contains all requirements and protocols for automated, stress, and edg
   - Files with timestamps in the future or far past
   - Files with no extension or hidden files (dotfiles)
   - Identical names in different directories
-- E2E tests MUST:
+- E2E and integration tests MUST:
   - Use the fixture generator to create test directories
-  - Run the full CLI workflow (analyze, checksum, copy, status, log) on these fixtures
-  - Assert correctness (all files copied, no duplicates, correct checksums, etc.)
-  - Cover all automatable edge cases
+  - Run the full CLI workflow (all commands and options) on these fixtures
+  - Assert correctness (all files copied, no duplicates, correct checksums, correct status, correct verification, etc.)
+  - Cover all automatable edge cases and error scenarios
   - Be robust, repeatable, and clean up after themselves
 - Manual test scripts SHOULD optionally use the large/complex fixtures for interactive/manual runs
 - All test requirements and protocols in this file are subject to the same agent protocol, archival, and review rules as other requirements and planning files.
+
+## CLI and Feature Test Coverage Requirements
+- All CLI commands and options must have corresponding automated tests:
+  - `init`, `import-checksums`, `analyze`, `checksum`, `copy`, `resume`, `status`, `log`,
+  - `verify`, `deep-verify`, `verify-status`, `deep-verify-status`, `verify-status-summary`, `verify-status-full`, `deep-verify-status-summary`, `deep-verify-status-full`,
+  - `add-file`, `add-source`, `list-files`, `remove-file`
+- Tests MUST cover:
+  - Resume/copy logic (partial, missing, already copied, corrupted files)
+  - Deduplication and incremental checksums
+  - Verification and audit commands
+  - Error handling, logging, and auditability
+  - Edge cases for all supported platforms
+- All features and edge cases must be covered by automated tests and kept up-to-date with code changes.
+
+## Test Scenario Checklist
+| Scenario                                 | Required Test Type(s)         |
+|------------------------------------------|------------------------------|
+| Init job directory                       | Unit, E2E                    |
+| Add/remove/list files                    | Unit, E2E                    |
+| Analyze source/destination               | Unit, E2E                    |
+| Checksum phase (all options)             | Unit, E2E                    |
+| Copy phase (all options, resume, dedup)  | E2E, Integration             |
+| Resume interrupted/failed jobs           | E2E, Integration             |
+| Import checksums                         | Unit, E2E                    |
+| Verification (shallow/deep, all options) | E2E, Integration             |
+| Status/log/audit commands                | E2E, Integration             |
+| Edge cases (corruption, partial, etc.)   | E2E, Integration, Manual     |
+| Fixture generator coverage               | Unit, E2E                    |
+| Error handling/reporting                 | Unit, E2E, Integration       |
 
 ## Guidelines and Strategies for Test Requirements
 
