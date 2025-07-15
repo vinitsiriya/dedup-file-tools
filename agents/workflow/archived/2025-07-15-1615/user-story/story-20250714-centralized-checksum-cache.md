@@ -20,4 +20,6 @@ As a user, I want all checksum logic to use a single, centralized cache table, s
 
 ---
 
+**Status: CLOSED (2025-07-15) — All acceptance criteria met, user story fully implemented and verified.**
+
 Linked requirement: requirement-20250714-centralized-checksum-cache.md
