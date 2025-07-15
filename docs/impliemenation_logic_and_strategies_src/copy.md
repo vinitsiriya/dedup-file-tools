@@ -41,4 +41,33 @@
 
 ---
 
+# Copy Logic
+
+## Overview
+The copy phase is responsible for safely copying files from source to destination, ensuring no redundant files are created. All state is tracked at the file level in the job's SQLite database.
+
+## Features
+- Block-wise (4KB) file copying
+- Deduplication: skips files whose checksum already exists in the destination
+- Fully resumable: interrupted jobs can be safely resumed
+- File-level state: each file's copy status is tracked in the database
+- UID abstraction: all file paths are stored as UIDs for portability
+- All operations are logged for auditability
+
+## Resume Logic
+- The `copy` and `resume` commands automatically skip completed files and retry pending/error files
+- No manual intervention is needed to resume an interrupted job
+
+## Error Handling
+- Errors (e.g., missing/corrupt files, partial copies) are logged and do not halt the job
+- Problem files can be retried or removed from the job state
+
+## Example Usage
+```
+python -m fs_copy_tool.main copy --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
+python -m fs_copy_tool.main resume --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
+```
+
+---
+
 This document explains the implementation logic and strategies for `copy.py`, supporting maintainability, observability, and future enhancements.

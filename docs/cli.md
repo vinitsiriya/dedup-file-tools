@@ -24,15 +24,16 @@ Import checksums from another job's `checksum_cache` table. Only `checksum_cache
 ```
 import-checksums --job-dir <path> --other-db <other_db_path>
 ```
+- Only `--other-db` is supported; legacy options are not available.
 
 ### analyze
-Scan source and/or destination volumes, gather file metadata, and update the database.
+Scan source and/or destination volumes, gather file metadata, and update the database. Uses `UidPath` abstraction for robust file tracking.
 ```
 analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
 ```
 
 ### checksum
-Compute and update checksums for files in the database.
+Compute and update checksums for files in the database. Uses `ChecksumCache` for all checksum operations.
 ```
 checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]
 ```
@@ -40,7 +41,7 @@ checksum --job-dir <path> --table <source_files|destination_files> [--threads N]
 - `--no-progress` disables the progress bar.
 
 ### copy
-Copy files from source to destination. Skips already completed files and resumes incomplete jobs by default.
+Copy files from source to destination. Skips already completed files and resumes incomplete jobs by default. Deduplication is performed using `ChecksumCache`.
 ```
 copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]
 ```
@@ -65,14 +66,14 @@ log --job-dir <path>
 ```
 
 ### verify
-Shallow or deep verify: check existence, size, last_modified, or checksums.
+Shallow or deep verify: check existence, size, last_modified, or checksums. Results are stored for auditability.
 ```
 verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--stage <shallow|deep>]
 ```
 - `--stage` defaults to `shallow`.
 
 ### deep-verify
-Deep verify: compare checksums between source and destination.
+Deep verify: compare checksums between source and destination using `ChecksumCache` as the only source of truth.
 ```
 deep-verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
 ```
@@ -114,13 +115,13 @@ deep-verify-status-full --job-dir <path>
 ```
 
 ### add-file
-Add a single file to the job state/database.
+Add a single file to the job state/database. Uses `UidPath` abstraction for robust file tracking.
 ```
 add-file --job-dir <path> --file <file_path>
 ```
 
 ### add-source
-Recursively add all files from a directory to the job state/database.
+Recursively add all files from a directory to the job state/database. Uses `UidPath` abstraction for robust file tracking.
 ```
 add-source --job-dir <path> --src <src_dir>
 ```

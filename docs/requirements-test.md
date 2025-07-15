@@ -7,7 +7,6 @@ This file contains all requirements and protocols for automated, stress, and edg
 - This file is subject to the same agent protocol and archival rules as other requirements and planning files.
 
 ## Automated, Stress, and Edge-Case Testing Requirements
-
 - A fixture generator script MUST exist (see `scripts/generate_fixtures.py`) to create large, complex, and edge-case file/directory structures for testing.
 - The fixture generator MUST support:
   - Deeply nested directories
@@ -31,6 +30,8 @@ This file contains all requirements and protocols for automated, stress, and edg
 - Tests MUST cover:
   - Resume/copy logic (partial, missing, already copied, corrupted files)
   - Edge cases for all supported platforms
+  - File-level stateful setup and teardown
+  - UID abstraction and checksum cache fallback
 - All features and edge cases must be covered by automated tests and kept up-to-date with code changes.
 
 ## Test Scenario Checklist
@@ -50,30 +51,11 @@ This file contains all requirements and protocols for automated, stress, and edg
 | Error handling/reporting                 | Unit, E2E, Integration       |
 
 ## Guidelines and Strategies for Test Requirements
-
-### General Principles
 - All automated, stress, and edge-case tests must be reproducible and platform-agnostic (work on Windows and Linux).
 - Use parameterized fixture generation to cover a wide range of scenarios and edge cases.
 - Prefer automation for all testable cases; document any manual-only edge cases separately.
 - Ensure all tests clean up after themselves to avoid polluting the workspace.
 - Track all test planning, implementation, and results in the appropriate `agents/` files.
-
-### Fixture Generation Strategy
-- Use a single script (`scripts/generate_fixtures.py`) to generate all required test fixtures.
-- The script should support command-line options for size, depth, file types, and special cases.
-- Document usage in the script docstring and README.
-- Update the script as new edge cases or requirements are identified.
-
-### E2E and Stress Test Strategy
-- Place E2E tests in `e2e_tests/` for clarity and separation from unit tests.
-- E2E tests should:
-  - Use the fixture generator to create input data
-  - Cover all automatable edge cases
-- Manual test scripts (e.g., `manual_test.ps1`) should optionally use the same fixtures for interactive runs.
-
-### Protocol Compliance
-- All test requirements, strategies, and results must be documented and tracked as per agent protocol.
-- Archive and update planning files after each major milestone or change.
 
 ## Stateful CLI Testing Requirements (2025-07-15)
 - All CLI and E2E tests MUST cover the new file-level stateful commands:

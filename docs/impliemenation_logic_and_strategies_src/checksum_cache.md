@@ -35,4 +35,36 @@
 
 ---
 
+# Checksum Cache Logic
+
+## Overview
+The `ChecksumCache` module provides a robust, auditable, and efficient mechanism for storing and retrieving file checksums. It is the only supported source for importing checksums from another job (via `import-checksums --other-db`).
+
+## Features
+- Stores SHA-256 checksums for all files in the job
+- Used as the fallback source for checksums when main tables are missing a value
+- All checksum operations (compute, verify, import) use the cache
+- Importing checksums is only supported from another job's `checksum_cache` table
+- All state is tracked in the job's SQLite database
+
+## Importing Checksums
+- Only `import-checksums --other-db` is supported (imports from another job's `checksum_cache` table)
+- Imported checksums are used as a fallback when the main tables are missing a checksum
+- Legacy/other import options are not supported
+
+## Fallback Logic
+- When a checksum is missing in the main tables, the cache is queried
+- If not found in the cache, the checksum is computed and stored
+
+## Error Handling
+- All operations are logged for auditability
+- Errors in import or fallback are reported and do not halt the job
+
+## Example Usage
+```
+python -m fs_copy_tool.main import-checksums --job-dir .copy-task --other-db <OTHER_DB_PATH>
+```
+
+---
+
 This document explains the implementation logic and strategies for `checksum_cache.py`, supporting maintainability and future enhancements.

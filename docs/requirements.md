@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Safely copy media files (photos, videos) from a source HDD pool to a destination HDD pool, ensuring **no redundant (duplicate) files** at the destination. The tool must robustly support both fixed and removable drives by tracking volumes using unique IDs (UUID or Serial Number), and be fully resumable and reliable using an SQLite database for all state.
+Safely copy media files (photos, videos) from a source HDD pool to a destination HDD pool, ensuring **no redundant (duplicate) files** at the destination. The tool robustly supports both fixed and removable drives by tracking volumes using unique IDs (UUID or Serial Number), and is fully resumable and reliable using an SQLite database for all state.
 
 ---
 
@@ -11,11 +11,12 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 ### 1. Analysis Phase
 
 * **Objective:**
-  Gather and persist metadata for all files in both source and destination pools.
+  Gather and persist metadata for all files in both source and destination pools using `UidPath` abstraction.
 
 * **Process:**
 
   * If a file is new or its size or modification time has changed, mark `checksum_stale = 1`.
+  * Handle missing UIDs and non-directory roots gracefully.
 
 ---
 
@@ -24,12 +25,21 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 * **Objective:**
   Ensure all tracked files have up-to-date content checksums stored in the database.
 
+* **Process:**
+
+  * Uses `ChecksumCache` for all checksum operations.
+
 ---
 
 ### 3. Copy Phase
 
 * **Objective:**
   Copy only those files from source to destination whose content (checksum) is not already present in the destination.
+
+* **Process:**
+
+  * Deduplication is performed using `ChecksumCache`.
+  * Supports threaded copy, progress reporting, and robust error handling.
 
 ---
 
@@ -40,7 +50,7 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 * **Process:**
 
-  * All resume/copy operations must be idempotent and safe to repeat.
+  * Resets status for missing files and resumes incomplete jobs.
 
 ---
 
@@ -51,6 +61,7 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 * **Process:**
 
+  * Supports `add-file`, `add-source`, `list-files`, `remove-file` commands.
   * All state changes are persisted in the job directory database and are fully auditable.
 
 ---
@@ -62,7 +73,9 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 * **Process:**
 
-  * All verification and audit results must be persisted and queryable.
+  * Shallow verify: checks existence, size, last_modified.
+  * Deep verify: compares checksums using `ChecksumCache` as the only source of truth.
+  * All verification and audit results are persisted and queryable.
 
 ---
 
@@ -155,6 +168,13 @@ All commands must be robust, auditable, and support full state persistence in th
 
 ---
 
+## System-Independent Path Abstraction
+
+* All file operations use `UidPath` for robust, portable referencing.
+* UID is the volume serial (Windows) or UUID (Linux); relative path is always relative to the mount point.
+
+---
+
 ## Checksum Calculation
 
 * All file content hashes are computed using SHA-256, block-wise (4KB per read or as appropriate for your platform).
@@ -164,6 +184,13 @@ All commands must be robust, auditable, and support full state persistence in th
 ## Volume Identification
 
 * All paths are stored and reconstructed using a `(volume_id, relative_path)` scheme to ensure robustness across changing mount points, drive letters, and removable devices.
+
+---
+
+## Auditability & Error Handling
+
+* All phases are auditable, resumable, and provide clear error reporting.
+* All state and logs are persisted in the job directory database.
 
 ---
 

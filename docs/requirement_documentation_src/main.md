@@ -11,7 +11,7 @@ This module is the main orchestration script for the Non-Redundant Media File Co
 - The database must be initialized with the required schema.
 
 ### 2. CLI Argument Parsing
-- The tool must provide a command-line interface with subcommands for each workflow phase (init, analyze, checksum, copy, verify, etc.).
+- The tool must provide a command-line interface with subcommands for each workflow phase (init, analyze, import-checksums, checksum, copy, resume, status, log, verify, deep-verify, etc.).
 - Argument parsing must be separated from command dispatch to enable unit testing.
 - Each subcommand must have a dedicated handler function.
 
@@ -45,3 +45,32 @@ This module is the main orchestration script for the Non-Redundant Media File Co
 ---
 
 This document describes the requirements and design intent for `main.py` in the file copy tool. Each requirement is traceable to a specific function or CLI command in the implementation.
+
+## Overview
+`fs-copy-tool` must provide a robust, resumable, and auditable file copy workflow for media migration. All state is tracked in a dedicated job directory using SQLite. The tool must support file-level job setup, UID-based path abstraction, and full auditability.
+
+## Requirements
+- Block-wise file copying with SHA-256 checksums
+- Deduplication: no redundant files at destination
+- All state, logs, and planning files in a job directory
+- Fully resumable and idempotent
+- File-level job setup: add/remove/list files
+- CLI for all phases: init, analyze, import-checksums, checksum, copy, resume, status, log, verify, deep-verify, and more
+- Verification and audit commands
+- Handles edge cases: partial/incomplete copies, missing/corrupt files
+- Cross-platform: Windows & Linux
+- Full test suite
+
+## Importing Checksums
+- Only `import-checksums --other-db` is supported (imports from another job's `checksum_cache` table)
+- Imported checksums are used as a fallback when the main tables are missing a checksum
+
+## File-Level State
+- All operations are tracked at the file level in the job database
+- Use `add-file`, `add-source`, `remove-file`, and `list-files` to manage job state
+
+## UID Path Abstraction
+- All file paths are stored as UIDs for portability and robustness
+
+## Auditability
+- All operations are logged and can be audited using the `log` and verification commands

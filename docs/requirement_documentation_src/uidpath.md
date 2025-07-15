@@ -29,4 +29,23 @@ This module provides a system-independent abstraction for file paths, enabling r
 
 ---
 
+# Requirements: UID Path Abstraction
+
+## Overview
+The UID path abstraction must provide a robust, system-independent way to represent file paths. All file-level state in `fs-copy-tool` must be tracked using UIDs, ensuring portability and auditability across platforms and sessions.
+
+## Requirements
+- Convert file paths to unique, system-independent UIDs
+- All job state (add-file, add-source, remove-file, list-files) must use UIDs
+- Enable robust tracking of files even if paths change or drives are remounted
+- Use in all phases: analyze, checksum, copy, verify, import
+- All operations must be logged for auditability
+
+## Benefits
+- Portability: jobs can be resumed on different systems or after drive changes
+- Robustness: files are tracked even if their absolute path changes
+- Auditability: all file operations are traceable via UIDs
+
+---
+
 This document describes the requirements and design intent for `uidpath.py` in the file copy tool. Each requirement is traceable to a specific method or workflow step in the implementation.
