@@ -11,8 +11,6 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 - Fully resumable and idempotent: safely interrupt and resume at any time
 - **Stateful, file-level job setup:**
   - `add-file` — Add a single file to the job state/database
-  - `add-source` — Recursively add all files from a directory
-  - `list-files` — List all files currently in the job state/database
   - `remove-file` — Remove a file from the job state/database
 - CLI commands for all phases: `init`, `analyze`, `import-checksums`, `checksum`, `copy`, `resume`, `status`, `log`, `verify`, `deep-verify`, and more
 - Verification and audit commands: `verify`, `deep-verify`, `verify-status`, `deep-verify-status`, `verify-status-summary`, `verify-status-full`, `deep-verify-status-summary`, `deep-verify-status-full`, `status`, `log`
@@ -79,16 +77,16 @@ python -m fs_copy_tool.main deep-verify-status-summary --job-dir .copy-task
 python -m fs_copy_tool.main deep-verify-status-full --job-dir .copy-task
 ```
 
-### 9. Import Checksums from Old Database (Optional)
+### 9. Import Checksums from Another Job (Current, 2025-07-15)
 ```
-python -m fs_copy_tool.main import-checksums --job-dir .copy-task --old-db <OLD_DB_PATH> --table source_files
+python -m fs_copy_tool.main import-checksums --job-dir .copy-task --other-db <OTHER_DB_PATH>
 ```
 
 ---
 
 ## CLI Commands
 - `init --job-dir <path>` — Create and initialize a job directory
-- `import-checksums --job-dir <path> --old-db <old_db_path> [--table <source_files|destination_files>]` — Import checksums from an old SQLite database
+- `import-checksums --job-dir <path> --other-db <other_db_path>` — Import checksums from another job's checksum_cache table
 - `analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]` — Scan source/destination and update the database
 - `checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]` — Compute missing/stale checksums
 - `copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]` — Copy only non-duplicate files
@@ -105,7 +103,7 @@ python -m fs_copy_tool.main import-checksums --job-dir .copy-task --old-db <OLD_
 - `deep-verify-status-full --job-dir <path>` — Show all deep verification results
 - `add-file --job-dir <path> --file <file_path>` — Add a single file to the job state/database
 - `add-source --job-dir <path> --src <src_dir>` — Recursively add all files from a directory
-- `list-files --job-dir <path>` — List all files currently in the job state/database
+- `list-files --job-dir <path>` — List all files in the job state/database
 - `remove-file --job-dir <path> --file <file_path>` — Remove a file from the job state/database
 
 ---

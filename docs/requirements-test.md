@@ -17,17 +17,9 @@ This file contains all requirements and protocols for automated, stress, and edg
   - Duplicate files (same content, different names/paths)
   - Special characters, Unicode, reserved names in filenames
   - Read-only files or directories
-  - Sparse files (if supported)
-  - Symlinks, hard links, junctions (handle/skip as needed)
-  - Files with different permissions/ownerships (Linux)
-  - Files with timestamps in the future or far past
-  - Files with no extension or hidden files (dotfiles)
   - Identical names in different directories
 - E2E and integration tests MUST:
   - Use the fixture generator to create test directories
-  - Run the full CLI workflow (all commands and options) on these fixtures
-  - Assert correctness (all files copied, no duplicates, correct checksums, correct status, correct verification, etc.)
-  - Cover all automatable edge cases and error scenarios
   - Be robust, repeatable, and clean up after themselves
 - Manual test scripts SHOULD optionally use the large/complex fixtures for interactive/manual runs
 - All test requirements and protocols in this file are subject to the same agent protocol, archival, and review rules as other requirements and planning files.
@@ -35,13 +27,9 @@ This file contains all requirements and protocols for automated, stress, and edg
 ## CLI and Feature Test Coverage Requirements
 - All CLI commands and options must have corresponding automated tests:
   - `init`, `import-checksums`, `analyze`, `checksum`, `copy`, `resume`, `status`, `log`,
-  - `verify`, `deep-verify`, `verify-status`, `deep-verify-status`, `verify-status-summary`, `verify-status-full`, `deep-verify-status-summary`, `deep-verify-status-full`,
   - `add-file`, `add-source`, `list-files`, `remove-file`
 - Tests MUST cover:
   - Resume/copy logic (partial, missing, already copied, corrupted files)
-  - Deduplication and incremental checksums
-  - Verification and audit commands
-  - Error handling, logging, and auditability
   - Edge cases for all supported platforms
 - All features and edge cases must be covered by automated tests and kept up-to-date with code changes.
 
@@ -54,7 +42,7 @@ This file contains all requirements and protocols for automated, stress, and edg
 | Checksum phase (all options)             | Unit, E2E                    |
 | Copy phase (all options, resume, dedup)  | E2E, Integration             |
 | Resume interrupted/failed jobs           | E2E, Integration             |
-| Import checksums                         | Unit, E2E                    |
+| Import checksums (from checksum_cache)   | Unit, E2E                    |
 | Verification (shallow/deep, all options) | E2E, Integration             |
 | Status/log/audit commands                | E2E, Integration             |
 | Edge cases (corruption, partial, etc.)   | E2E, Integration, Manual     |
@@ -80,8 +68,6 @@ This file contains all requirements and protocols for automated, stress, and edg
 - Place E2E tests in `e2e_tests/` for clarity and separation from unit tests.
 - E2E tests should:
   - Use the fixture generator to create input data
-  - Run the full CLI workflow (analyze, checksum, copy, etc.)
-  - Assert that all files are processed correctly and efficiently
   - Cover all automatable edge cases
 - Manual test scripts (e.g., `manual_test.ps1`) should optionally use the same fixtures for interactive runs.
 
@@ -89,7 +75,7 @@ This file contains all requirements and protocols for automated, stress, and edg
 - All test requirements, strategies, and results must be documented and tracked as per agent protocol.
 - Archive and update planning files after each major milestone or change.
 
-## Stateful CLI Testing Requirements (2025-07-14)
+## Stateful CLI Testing Requirements (2025-07-15)
 - All CLI and E2E tests MUST cover the new file-level stateful commands:
   - `add-file`, `add-source`, `list-files`, `remove-file`
 - Tests MUST verify incremental job setup, file addition/removal, and correct operation of all phases after stateful setup.

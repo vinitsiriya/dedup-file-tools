@@ -20,11 +20,10 @@ init --job-dir <path>
 ```
 
 ### import-checksums
-Import checksums from an old SQLite database into the checksum cache table. These imported checksums are used as a fallback when the main tables are missing a checksum.
+Import checksums from another job's `checksum_cache` table. Only `checksum_cache` is supported for import as of 2025-07-15. These imported checksums are used as a fallback when the main tables are missing a checksum.
 ```
-import-checksums --job-dir <path> --old-db <old_db_path> [--table <source_files|destination_files>]
+import-checksums --job-dir <path> --other-db <other_db_path>
 ```
-- `--table` defaults to `source_files` if not specified.
 
 ### analyze
 Scan source and/or destination volumes, gather file metadata, and update the database.
@@ -143,7 +142,7 @@ remove-file --job-dir <path> --file <file_path>
 - Use the `status` and `log` commands to monitor progress and troubleshoot issues.
 - Use the `resume` or `copy` command to safely continue interrupted jobs.
 - Run `verify` and `deep-verify` after copying to ensure data integrity.
-- For manual and automated tests, use the `.temp` directory as described in the documentation.
+- For manual and automated tests, use a dedicated temp directory as described in the documentation.
 
 ## Example Workflow
 ```
@@ -157,6 +156,7 @@ remove-file --job-dir <path> --file <file_path>
 .venv\Scripts\python.exe fs_copy_tool/main.py status --job-dir .temp/job
 .venv\Scripts\python.exe fs_copy_tool/main.py verify --job-dir .temp/job --src .temp/src --dst .temp/dst
 .venv\Scripts\python.exe fs_copy_tool/main.py deep-verify --job-dir .temp/job --src .temp/src --dst .temp/dst
+.venv\Scripts\python.exe fs_copy_tool/main.py import-checksums --job-dir .temp/job --other-db .temp/other_job/copytool.db
 ```
 
 ---
