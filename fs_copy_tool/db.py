@@ -34,6 +34,17 @@ CREATE TABLE IF NOT EXISTS checksum_cache (
     is_valid INTEGER DEFAULT 1, -- 1=valid, 0=stale
     PRIMARY KEY (uid, relative_path)
 );
+
+-- Destination pool index (no checksums, just file presence)
+CREATE TABLE IF NOT EXISTS destination_pool_files (
+    uid TEXT,
+    relative_path TEXT,
+    size INTEGER,
+    last_modified INTEGER,
+    last_seen INTEGER,
+    PRIMARY KEY (uid, relative_path)
+);
+CREATE INDEX IF NOT EXISTS idx_destination_pool_uid_relpath ON destination_pool_files(uid, relative_path);
 CREATE INDEX IF NOT EXISTS idx_source_status ON source_files (copy_status);
 CREATE INDEX IF NOT EXISTS idx_dest_status ON destination_files (copy_status);
 CREATE INDEX IF NOT EXISTS idx_checksum_cache_uid_relpath ON checksum_cache(uid, relative_path);

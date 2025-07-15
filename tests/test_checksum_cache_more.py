@@ -1,3 +1,52 @@
+def setup_test_db_with_pool(tmp_path):
+    db_path = tmp_path / "test.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute("""
+        CREATE TABLE checksum_cache (
+            uid TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            size INTEGER,
+            last_modified INTEGER,
+            checksum TEXT,
+            imported_at INTEGER,
+            last_validated INTEGER,
+            is_valid INTEGER DEFAULT 1,
+            PRIMARY KEY (uid, relative_path)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE destination_pool_files (
+            uid TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            size INTEGER,
+            last_modified INTEGER,
+            last_seen INTEGER,
+            PRIMARY KEY (uid, relative_path)
+        )
+    """)
+    conn.commit()
+    conn.close()
+    return str(db_path)
+
+def test_exists_at_destination_pool(tmp_path):
+    db_path = setup_test_db_with_pool(tmp_path)
+    uid_path = UidPath()
+    cache = ChecksumCache(db_path, uid_path)
+    # Create a temp file and add to both tables
+    file_path = tmp_path / "file1.txt"
+    file_path.write_text("hello world")
+    stat = file_path.stat()
+    checksum = "dummychecksum123"
+    uid, rel = uid_path.convert_path(str(file_path))
+    # Add to destination_pool_files
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("INSERT INTO destination_pool_files (uid, relative_path, size, last_modified, last_seen) VALUES (?, ?, ?, ?, 0)", (uid, str(rel), stat.st_size, int(stat.st_mtime)))
+        conn.execute("INSERT INTO checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid) VALUES (?, ?, ?, ?, ?, 0, 0, 1)", (uid, str(rel), stat.st_size, int(stat.st_mtime), checksum))
+        conn.commit()
+    # Should find the checksum in the pool
+    assert cache.exists_at_destination_pool(checksum)
+    # Should not find a random checksum
+    assert not cache.exists_at_destination_pool("not_a_real_checksum")
 import os
 import sqlite3
 import tempfile

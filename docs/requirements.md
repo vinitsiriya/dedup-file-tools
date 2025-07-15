@@ -31,6 +31,7 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 ---
 
+
 ### 3. Copy Phase
 
 * **Objective:**
@@ -38,6 +39,7 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 * **Process:**
 
+  * Before copying, the tool updates and validates all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.
   * Deduplication is performed using `ChecksumCache`.
   * Supports threaded copy, progress reporting, and robust error handling.
 

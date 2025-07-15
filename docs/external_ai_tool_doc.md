@@ -76,7 +76,7 @@ The import checksums feature allows you to import file checksums from another co
 2. **Add files or directories** to the job database (file-level stateful setup).
 3. **Analyze** source and destination volumes to gather file metadata.
 4. **Compute checksums** for all files.
-5. **Copy** only non-duplicate files from source to destination.
+5. **Copy** only non-duplicate files from source to destination. *Before copying, the tool updates and validates all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.*
 6. **Resume** interrupted or failed jobs safely.
 7. **Verify** and audit all copy operations (shallow and deep verification).
 8. **Import checksums** from another compatible database if needed (from `checksum_cache` only).
@@ -97,6 +97,8 @@ fs-copy-tool <command> [options]
 - `analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]`
 - `checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]`
 - `copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]`
+  - `--resume` is always enabled by default and can be omitted.
+  - *Before copying, all destination pool checksums are updated and validated with a progress bar to ensure deduplication is accurate and up to date.*
 - `resume --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]`
 - `status --job-dir <path>`
 - `log --job-dir <path>`

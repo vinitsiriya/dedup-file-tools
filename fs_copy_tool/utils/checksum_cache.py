@@ -5,6 +5,51 @@ from fs_copy_tool.utils.fileops import compute_sha256
 import time
 
 class ChecksumCache:
+
+    def exists_at_destination_pool(self, checksum: str) -> bool:
+        """
+        Check if the given checksum exists and is valid at any file in the destination pool.
+        Uses a SQL JOIN for efficiency.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT 1 FROM destination_pool_files AS dpf
+                JOIN checksum_cache AS cc
+                  ON dpf.uid = cc.uid AND dpf.relative_path = cc.relative_path
+                WHERE cc.checksum = ? AND cc.is_valid = 1
+                LIMIT 1
+                """,
+                (checksum,)
+            )
+            return cur.fetchone() is not None
+import sqlite3
+from typing import Optional
+from pathlib import Path
+from fs_copy_tool.utils.fileops import compute_sha256
+import time
+
+class ChecksumCache:
+
+    def exists_at_destination_pool(self, checksum: str) -> bool:
+        """
+        Check if the given checksum exists and is valid at any file in the destination pool.
+        Uses a SQL JOIN for efficiency.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT 1 FROM destination_pool_files AS dpf
+                JOIN checksum_cache AS cc
+                  ON dpf.uid = cc.uid AND dpf.relative_path = cc.relative_path
+                WHERE cc.checksum = ? AND cc.is_valid = 1
+                LIMIT 1
+                """,
+                (checksum,)
+            )
+            return cur.fetchone() is not None
     """
     Centralized access for all checksum cache operations.
     Uses UidPath for all conversions and file resolution.

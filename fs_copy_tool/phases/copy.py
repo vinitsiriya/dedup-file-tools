@@ -95,6 +95,13 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
                     checksums_on_disk.add(chksum)
     copied_checksums = set(checksums_on_disk)
     copied_lock = Lock()
+    # Always check both path and pool deduplication
+    def exists_in_pool(checksum):
+        try:
+            return checksum_cache.exists_at_destination_pool(checksum)
+        except Exception:
+            return False
+
     def process_copy(args):
         uid, rel_path, size, last_modified = args
         print(f"[DEBUG] process_copy: uid={uid}, rel_path={rel_path}, thread={threading.current_thread().name}", file=sys.stderr)
@@ -120,10 +127,12 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
                 logging.info(f"[AGENT][COPY] Skipped (deduplication: already present on disk or copied this batch): {rel_path}")
                 return True
             copied_checksums.add(checksum)
-        # Use path-aware deduplication: only skip if checksum exists at any destination
-        if checksum_cache.exists_at_destination(checksum):
+        # Check both pool-wide and path-specific deduplication: if checksum exists in either, skip copy
+        pool_exists = exists_in_pool(checksum)
+        path_exists = checksum_cache.exists_at_destination(checksum)
+        if pool_exists or path_exists:
             mark_copy_status(db_path, uid, rel_path, 'done')
-            logging.info(f"[AGENT][COPY] Skipped (checksum already present on disk in destination): {rel_path}")
+            logging.info(f"[AGENT][COPY] Skipped (deduplication: checksum already present in pool or at destination): {rel_path}")
             return True
         for dst_root in dst_roots:
             dst_file = Path(dst_root) / rel_path

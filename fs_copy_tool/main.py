@@ -1,3 +1,8 @@
+def handle_add_to_destination_index_pool(args):
+    from fs_copy_tool.utils.destination_pool_cli import add_to_destination_index_pool
+    db_path = get_db_path_from_job_dir(args.job_dir)
+    add_to_destination_index_pool(db_path, args.dst)
+    return 0
 """
 File: fs-copy-tool/main.py
 Description: Main orchestration script for Non-Redundant Media File Copy Tool
@@ -108,6 +113,10 @@ def remove_file_from_db(db_path, file_path):
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Non-Redundant Media File Copy Tool")
     subparsers = parser.add_subparsers(dest='command')
+    # Add to destination index pool command (must be after subparsers is defined)
+    parser_add_pool = subparsers.add_parser('add-to-destination-index-pool', help='Scan and add/update all files in the destination pool index')
+    parser_add_pool.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_add_pool.add_argument('--dst', required=True, help='Destination root directory to scan')
 
     # Init command
     parser_init = subparsers.add_parser('init', help='Initialize a new job directory')
@@ -232,6 +241,22 @@ def handle_analyze(args):
 def handle_copy(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
     init_db(db_path)
+    # Step 1: Update and validate destination pool checksums with progress bar
+    from fs_copy_tool.utils.checksum_cache import ChecksumCache
+    from tqdm import tqdm
+    import sqlite3
+    checksum_cache = ChecksumCache(db_path, UidPath())
+    # Get all files in the destination pool
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT uid, relative_path FROM destination_pool_files")
+        pool_files = cur.fetchall()
+    if pool_files:
+        with tqdm(total=len(pool_files), desc="Updating pool checksums") as pbar:
+            for uid, rel_path in pool_files:
+                checksum_cache.get_or_compute(UidPath().reconstruct_path(uid, rel_path))
+                pbar.update(1)
+    # Step 2: Always check both path and pool deduplication in copy_files
     copy_files(db_path, args.src, args.dst, threads=args.threads)
     return 0
 
@@ -383,6 +408,8 @@ def handle_import_checksums(args):
     return 0
 
 def run_main_command(args):
+    if getattr(args, 'command', None) == 'add-to-destination-index-pool':
+        return handle_add_to_destination_index_pool(args)
     if args.command == 'init':
         return handle_init(args)
     elif args.command == 'import-checksums':
@@ -415,9 +442,9 @@ def run_main_command(args):
         return handle_list_files(args)
     elif args.command == 'remove-file':
         return handle_remove_file(args)
-    else:
-        print("No command specified or unknown command.")
-        return 1
+
+    print("No command specified or unknown command.")
+    return 1
 
 if __name__ == "__main__":
     main()

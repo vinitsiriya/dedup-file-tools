@@ -40,12 +40,14 @@ checksum --job-dir <path> --table <source_files|destination_files> [--threads N]
 - `--threads` defaults to 4.
 - `--no-progress` disables the progress bar.
 
+
 ### copy
-Copy files from source to destination. Skips already completed files and resumes incomplete jobs by default. Deduplication is performed using `ChecksumCache`.
+Copy files from source to destination. Before copying, the tool updates and validates all destination pool checksums with a progress bar. Skips already completed files and resumes incomplete jobs by default. Deduplication is performed using `ChecksumCache`.
 ```
 copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]
 ```
 - `--resume` is always enabled by default and can be omitted.
+- *Before copying, all destination pool checksums are updated and validated with a progress bar to ensure deduplication is accurate and up to date.*
 
 ### resume
 Alias for `copy`. Retries pending/error files and skips completed ones.

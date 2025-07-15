@@ -53,10 +53,11 @@ python -m fs_copy_tool.main checksum --job-dir .copy-task --table source_files
 python -m fs_copy_tool.main checksum --job-dir .copy-task --table destination_files
 ```
 
-### 6. Copy Non-Redundant Files
+### 6. Copy Non-Redundant Files (with Destination Pool Validation)
 ```
 python -m fs_copy_tool.main copy --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
 ```
+*Before copying, the tool will update and validate all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.*
 
 ### 7. Resume, Status, and Logs
 ```
@@ -89,7 +90,7 @@ python -m fs_copy_tool.main import-checksums --job-dir .copy-task --other-db <OT
 - `import-checksums --job-dir <path> --other-db <other_db_path>` — Import checksums from another job's checksum_cache table
 - `analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]` — Scan source/destination and update the database
 - `checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]` — Compute missing/stale checksums
-- `copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]` — Copy only non-duplicate files
+- `copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]` — Before copying, updates and validates all destination pool checksums with a progress bar, then copies only non-duplicate files
 - `resume --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]` — Resume incomplete/failed operations
 - `status --job-dir <path>` — Show job progress and statistics
 - `log --job-dir <path>` — Output a log or audit trail
