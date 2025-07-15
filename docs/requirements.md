@@ -20,57 +20,91 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 
 ---
 
-### 2. Checksum Sync Phase
 
-* **Objective:**
-  Ensure all tracked files have up-to-date content checksums stored in the database.
+### `source_files` Table
 
-* **Process:**
+| Column            | Type      | Description                                                      |
+|-------------------|-----------|------------------------------------------------------------------|
+| uid               | TEXT      | Source volume unique identifier (UUID or Serial No.)             |
+| relative_path     | TEXT      | File path relative to volume root                                |
+| last_modified     | INTEGER   | Last modified timestamp (epoch)                                  |
+| size              | INTEGER   | File size in bytes                                               |
+| copy_status       | TEXT      | 'pending', 'in_progress', 'done', 'error'                        |
+| last_copy_attempt | INTEGER   | Timestamp of last copy attempt                                   |
+| error_message     | TEXT      | Last error message, if any                                       |
+| PRIMARY KEY       | (uid, relative_path) |                                                          |
 
-  * Uses `ChecksumCache` for all checksum operations.
+### `destination_files` Table
 
----
+| Column          | Type      | Description                                                      |
+|-----------------|-----------|------------------------------------------------------------------|
+| uid             | TEXT      | Destination volume unique identifier (UUID or Serial No.)         |
+| relative_path   | TEXT      | File path relative to volume root                                |
+| last_modified   | INTEGER   | Last modified timestamp (epoch)                                  |
+| size            | INTEGER   | File size in bytes                                               |
+| copy_status     | TEXT      | 'pending', 'in_progress', 'done', 'error'                        |
+| error_message   | TEXT      | Last error message, if any                                       |
+| PRIMARY KEY     | (uid, relative_path) |                                                          |
 
+### `checksum_cache` Table
 
-### 3. Copy Phase
+| Column          | Type      | Description                                                      |
+|-----------------|-----------|------------------------------------------------------------------|
+| uid             | TEXT      | Volume unique identifier                                         |
+| relative_path   | TEXT      | File path relative to volume root                                |
+| size            | INTEGER   | File size in bytes                                               |
+| last_modified   | INTEGER   | Last modified timestamp (epoch)                                  |
+| checksum        | TEXT      | SHA-256 checksum                                                 |
+| imported_at     | INTEGER   | Import timestamp                                                 |
+| last_validated  | INTEGER   | Last validation timestamp                                        |
+| is_valid        | INTEGER   | 1=valid, 0=stale                                                 |
+| PRIMARY KEY     | (uid, relative_path) |                                                          |
 
-* **Objective:**
-  Copy only those files from source to destination whose content (checksum) is not already present in the destination.
+### `destination_pool_files` Table
 
-* **Process:**
+| Column          | Type      | Description                                                      |
+|-----------------|-----------|------------------------------------------------------------------|
+| uid             | TEXT      | Volume unique identifier                                         |
+| relative_path   | TEXT      | File path relative to volume root                                |
+| size            | INTEGER   | File size in bytes                                               |
+| last_modified   | INTEGER   | Last modified timestamp (epoch)                                  |
+| last_seen       | INTEGER   | Last time this file was seen in the pool (epoch)                 |
+| PRIMARY KEY     | (uid, relative_path) |                                                          |
 
-  * Before copying, the tool updates and validates all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.
-  * Deduplication is performed using `ChecksumCache`.
-  * Supports threaded copy, progress reporting, and robust error handling.
+### `verification_shallow_results` Table
 
----
+| Column                  | Type      | Description                                                  |
+|-------------------------|-----------|--------------------------------------------------------------|
+| uid                     | TEXT      | Volume unique identifier                                     |
+| relative_path           | TEXT      | File path relative to volume root                            |
+| exists                  | INTEGER   | 1 if file exists, 0 otherwise                                |
+| size_matched            | INTEGER   | 1 if size matches, 0 otherwise                               |
+| last_modified_matched   | INTEGER   | 1 if last_modified matches, 0 otherwise                      |
+| expected_size           | INTEGER   | Expected file size                                           |
+| actual_size             | INTEGER   | Actual file size                                             |
+| expected_last_modified  | INTEGER   | Expected last modified timestamp                             |
+| actual_last_modified    | INTEGER   | Actual last modified timestamp                               |
+| verify_status           | TEXT      | Verification status                                          |
+| verify_error            | TEXT      | Verification error message                                   |
+| timestamp               | INTEGER   | Verification timestamp (epoch)                               |
+| PRIMARY KEY             | (uid, relative_path, timestamp) |                              |
 
-### 4. Resume & Retry Logic
+### `verification_deep_results` Table
 
-* **Objective:**
-  Guarantee safe, resumable operation in case of interruption or failure.
+| Column            | Type      | Description                                                  |
+|-------------------|-----------|--------------------------------------------------------------|
+| uid               | TEXT      | Volume unique identifier                                     |
+| relative_path     | TEXT      | File path relative to volume root                            |
+| checksum_matched  | INTEGER   | 1 if checksum matches, 0 otherwise                           |
+| expected_checksum | TEXT      | Expected checksum                                            |
+| src_checksum      | TEXT      | Source file checksum                                         |
+| dst_checksum      | TEXT      | Destination file checksum                                    |
+| verify_status     | TEXT      | Verification status                                          |
+| verify_error      | TEXT      | Verification error message                                   |
+| timestamp         | INTEGER   | Verification timestamp (epoch)                               |
+| PRIMARY KEY       | (uid, relative_path, timestamp) |                                  |
 
-* **Process:**
-
-  * Resets status for missing files and resumes incomplete jobs.
-
----
-
-### 5. Stateful, File-Level Job Setup
-
-* **Objective:**
-  Support incremental, auditable job setup and modification at the file level.
-
-* **Process:**
-
-  * Supports `add-file`, `add-source`, `list-files`, `remove-file` commands.
-  * All state changes are persisted in the job directory database and are fully auditable.
-
----
-
-### 6. Verification & Audit Phases
-
-* **Objective:**
+(All indexes and schema details are defined in `db.py` and are kept in sync with this documentation.)
   Provide robust verification and auditability of all copy operations.
 
 * **Process:**
@@ -151,6 +185,20 @@ All commands must be robust, auditable, and support full state persistence in th
 | copy_status     | TEXT                  | 'pending', 'in_progress', 'done', 'error'                |
 | error_message   | TEXT                  | Last error message, if any                               |
 | PRIMARY KEY     | (uid, relative_path)  |                                                         |
+
+
+### `destination_pool_files` Table
+
+| Column          | Type      | Description                                               |
+| --------------  | --------- | --------------------------------------------------------- |
+| uid             | TEXT      | Volume unique identifier                                 |
+| relative_path   | TEXT      | File path relative to volume root                        |
+| size            | INTEGER   | File size in bytes                                       |
+| last_modified   | INTEGER   | Last modified timestamp (epoch)                          |
+| last_seen       | INTEGER   | Last time this file was seen in the pool (epoch)         |
+| PRIMARY KEY     | (uid, relative_path) |                                             |
+
+*This table is updated by scanning the destination root(s) and is used for global deduplication. It is always validated and updated before the copy phase.*
 
 ### `checksum_cache` Table
 
