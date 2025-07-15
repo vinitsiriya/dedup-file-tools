@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 import time
 import threading
+import logging
 
 def reset_status_for_missing_files(db_path, dst_roots):
     """
@@ -29,22 +30,22 @@ def reset_status_for_missing_files(db_path, dst_roots):
         """)
         candidates = cur.fetchall()
         for uid, rel_path, copy_status in candidates:
-            print(f"[DEBUG] Checking file: uid={uid}, rel_path={rel_path}, copy_status={copy_status}", file=sys.stderr)
+            logging.debug(f"Checking file: uid={uid}, rel_path={rel_path}, copy_status={copy_status}")
             sys.stderr.flush()
             missing = True
             for dst_root in dst_roots:
                 dst_file = Path(dst_root) / rel_path
-                print(f"[DEBUG]   Checking dst_file={dst_file} exists={dst_file.exists()}", file=sys.stderr)
+                logging.debug(f"  Checking dst_file={dst_file} exists={dst_file.exists()}")
                 sys.stderr.flush()
                 if dst_file.exists():
                     missing = False
                     break
             if copy_status == 'done' and missing:
-                print(f"[DEBUG] Resetting {rel_path} to pending (was done, now missing)", file=sys.stderr)
+                logging.debug(f"Resetting {rel_path} to pending (was done, now missing)")
                 sys.stderr.flush()
                 mark_copy_status(db_path, uid, rel_path, 'pending', 'Destination file missing, will retry')
         conn.commit()  # Ensure all changes are flushed
-    print(f"[DEBUG] reset_status_for_missing_files: completed", file=sys.stderr)
+    logging.info("reset_status_for_missing_files: completed")
     sys.stderr.flush()
 
 def get_pending_copies(db_path):
@@ -73,7 +74,7 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     from threading import Lock
     from tqdm import tqdm
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    print(f"[DEBUG] copy_files: db_path={db_path}, src_roots={src_roots}, dst_roots={dst_roots}")
+    logging.info(f"copy_files: db_path={db_path}, src_roots={src_roots}, dst_roots={dst_roots}")
     sys.stderr.flush()
     uid_path = UidPath()
     checksum_cache = ChecksumCache(db_path, uid_path)
@@ -104,18 +105,18 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
 
     def process_copy(args):
         uid, rel_path, size, last_modified = args
-        print(f"[DEBUG] process_copy: uid={uid}, rel_path={rel_path}, thread={threading.current_thread().name}", file=sys.stderr)
+        logging.debug(f"process_copy: uid={uid}, rel_path={rel_path}, thread={threading.current_thread().name}")
         sys.stderr.flush()
         # Always use UidPath to reconstruct the source file path
         src_file = uid_path.reconstruct_path(uid, rel_path)
-        print(f"[DEBUG] src_file resolved to: {src_file}", file=sys.stderr)
+        logging.debug(f"src_file resolved to: {src_file}")
         sys.stderr.flush()
         if not src_file or not src_file.exists():
-            print(f"[DEBUG] Source file not found: {src_file}", file=sys.stderr)
+            logging.debug(f"Source file not found: {src_file}")
             mark_copy_status(db_path, uid, rel_path, 'error', 'Source file not found for resume')
             return False
         checksum = checksum_cache.get_or_compute(str(src_file))
-        print(f"[DEBUG] checksum for src_file: {checksum}", file=sys.stderr)
+        logging.debug(f"checksum for src_file: {checksum}")
         sys.stderr.flush()
         if not checksum:
             mark_copy_status(db_path, uid, rel_path, 'error', 'No valid checksum in cache and cannot compute')
@@ -136,18 +137,18 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
             return True
         for dst_root in dst_roots:
             dst_file = Path(dst_root) / rel_path
-            print(f"[DEBUG] About to create parent dir: {dst_file.parent}", file=sys.stderr)
+            logging.debug(f"About to create parent dir: {dst_file.parent}")
             sys.stderr.flush()
             dst_file.parent.mkdir(parents=True, exist_ok=True)
-            print(f"[DEBUG] Parent dir exists: {dst_file.parent.exists()} (should be True)", file=sys.stderr)
-            print(f"[DEBUG] About to copy: {src_file} -> {dst_file}", file=sys.stderr)
+            logging.debug(f"Parent dir exists: {dst_file.parent.exists()} (should be True)")
+            logging.debug(f"About to copy: {src_file} -> {dst_file}")
             sys.stderr.flush()
             mark_copy_status(db_path, uid, rel_path, 'in_progress')
             def log_progress(percent, copied, total):
                 if percent % 10 == 0 or percent == 100:
                     logging.info(f"[AGENT][COPY][PROGRESS] {rel_path}: {percent}% ({copied}/{total} bytes)")
             src_checksum, dst_checksum = copy_file(src_file, dst_file, progress_callback=log_progress, show_progressbar=True)
-            print(f"[DEBUG] Copy complete: {src_file} -> {dst_file} exists={dst_file.exists()} size={dst_file.stat().st_size if dst_file.exists() else 'N/A'}", file=sys.stderr)
+            logging.debug(f"Copy complete: {src_file} -> {dst_file} exists={dst_file.exists()} size={dst_file.stat().st_size if dst_file.exists() else 'N/A'}")
             sys.stderr.flush()
             if src_checksum == dst_checksum == checksum:
                 with sqlite3.connect(db_path) as conn:
@@ -162,12 +163,12 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
                     """, (uid, rel_path, size, last_modified))
                     conn.commit()
                 mark_copy_status(db_path, uid, rel_path, 'done')
-                print(f"[DEBUG] File copy verified and marked done: {dst_file}", file=sys.stderr)
+                logging.debug(f"File copy verified and marked done: {dst_file}")
                 sys.stderr.flush()
                 return True
             else:
                 mark_copy_status(db_path, uid, rel_path, 'error', 'Checksum mismatch after copy')
-                print(f"[DEBUG] Checksum mismatch after copy: src={src_checksum}, dst={dst_checksum}, expected={checksum}", file=sys.stderr)
+                logging.debug(f"Checksum mismatch after copy: src={src_checksum}, dst={dst_checksum}, expected={checksum}")
                 sys.stderr.flush()
                 return False
     with ThreadPoolExecutor(max_workers=threads) as executor:

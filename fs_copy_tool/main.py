@@ -19,6 +19,7 @@ from fs_copy_tool.phases.copy import copy_files
 from fs_copy_tool.phases.verify import shallow_verify_files, deep_verify_files
 from fs_copy_tool.utils.uidpath import UidPath
 from fs_copy_tool.utils.checksum_cache import ChecksumCache
+from fs_copy_tool.utils.logging_config import setup_logging
 
 def init_job_dir(job_dir):
     os.makedirs(job_dir, exist_ok=True)
@@ -26,7 +27,7 @@ def init_job_dir(job_dir):
     init_db(db_path)
     # Optionally create log, planning, and state files here
     # ...
-    print(f"Initialized job directory at {job_dir} with database {db_path}")
+    logging.info(f"Initialized job directory at {job_dir} with database {db_path}")
 
 
 def get_db_path_from_job_dir(job_dir):
@@ -38,12 +39,12 @@ def add_file_to_db(db_path, file_path):
     from fs_copy_tool.utils.uidpath import UidPath
     file = Path(file_path)
     if not file.is_file():
-        print(f"Error: {file_path} is not a file.", file=sys.stderr)
+        logging.error(f"Error: {file_path} is not a file.")
         sys.exit(1)
     uid_path = UidPath()
     uid, rel = uid_path.convert_path(str(file))
     if uid is None:
-        print(f"Error: Could not determine UID for {file_path}", file=sys.stderr)
+        logging.error(f"Error: Could not determine UID for {file_path}")
         sys.exit(1)
     try:
         stat = file.stat()
@@ -57,26 +58,29 @@ def add_file_to_db(db_path, file_path):
                     last_modified=excluded.last_modified
             """, (uid, rel, stat.st_size, int(stat.st_mtime)))
             conn.commit()
-        print(f"Added file: {file_path}", file=sys.stderr)
+        logging.debug(f"Added file: {file_path}")
     except Exception as e:
-        print(f"Error adding file: {file_path}\n{e}", file=sys.stderr)
+        logging.error(f"Error adding file: {file_path}\n{e}")
         sys.exit(1)
 
 def add_source_to_db(db_path, src_dir):
     uid_path = UidPath()
     src = Path(src_dir)
     if not src.is_dir():
-        print(f"Error: {src_dir} is not a directory.")
+        logging.error(f"Error: {src_dir} is not a directory.")
         return
+    from tqdm import tqdm
+    from concurrent.futures import ThreadPoolExecutor
+    files = [file for file in src.rglob("*") if file.is_file()]
     count = 0
-    for file in src.rglob("*"):
-        if file.is_file():
+    batch_size = max(100, len(files) // 10)  # 10 threads, each gets a batch
+    def process_batch(batch):
+        local_count = 0
+        for file in batch:
             uid, rel = uid_path.convert_path(str(file))
             if uid is None:
-                print(f"Error: Could not determine UID for {file}", file=sys.stderr)
+                logging.error(f"Error: Could not determine UID for {file}")
                 continue
-            # Print debug info for each file added
-            print(f"ADD_SOURCE DEBUG: uid={uid}, rel={rel}, file={file}", file=sys.stderr)
             stat = file.stat()
             with sqlite3.connect(db_path) as conn:
                 cur = conn.cursor()
@@ -88,8 +92,18 @@ def add_source_to_db(db_path, src_dir):
                         last_modified=excluded.last_modified
                 """, (uid, rel, stat.st_size, int(stat.st_mtime)))
                 conn.commit()
-            count += 1
-    print(f"Added {count} files from directory: {src_dir}")
+            local_count += 1
+        return local_count
+    batches = [files[i:i+batch_size] for i in range(0, len(files), batch_size)]
+    with tqdm(total=len(files), desc=f"Adding files from {src_dir}") as pbar:
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = executor.map(process_batch, batches)
+            for batch_count in results:
+                count += batch_count
+                pbar.update(batch_count)
+    logging.info(f"Added {count} files from directory: {src_dir}")
+    if count > 0:
+        logging.info(f"Batch add complete: {count} files added from {src_dir}")
 
 def list_files_in_db(db_path):
     with sqlite3.connect(db_path) as conn:
@@ -97,8 +111,8 @@ def list_files_in_db(db_path):
         cur.execute("SELECT uid, relative_path, size, last_modified FROM source_files ORDER BY uid, relative_path")
         rows = cur.fetchall()
         for row in rows:
-            print(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]}")
-    print(f"Total files: {len(rows)}")
+            logging.debug(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]}")
+    logging.info(f"Total files: {len(rows)}")
 
 def remove_file_from_db(db_path, file_path):
     file = Path(file_path)
@@ -108,7 +122,7 @@ def remove_file_from_db(db_path, file_path):
         cur = conn.cursor()
         cur.execute("DELETE FROM source_files WHERE uid=? AND relative_path=?", (mount_id, rel))
         conn.commit()
-    print(f"Removed file: {file_path}")
+    logging.info(f"Removed file: {file_path}")
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Non-Redundant Media File Copy Tool")
@@ -264,8 +278,45 @@ def handle_verify(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
     if args.stage == 'shallow':
         shallow_verify_files(db_path, args.src, args.dst)
+        # Print only summary
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT verify_status, COUNT(*) FROM verification_shallow_results
+                WHERE timestamp = (SELECT MAX(timestamp) FROM verification_shallow_results vs2 WHERE vs2.relative_path = verification_shallow_results.relative_path)
+                GROUP BY verify_status
+            ''')
+            print("\nShallow Verification Summary:")
+            for status, count in cur.fetchall():
+                print(f"  {status}: {count}")
     else:
         deep_verify_files(db_path, args.src, args.dst)
+        error_count = 0
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT verify_status, COUNT(*) FROM verification_deep_results
+                WHERE timestamp = (SELECT MAX(timestamp) FROM verification_deep_results vd2 WHERE vd2.relative_path = verification_deep_results.relative_path)
+                GROUP BY verify_status
+            ''')
+            print("\nDeep Verification Summary:")
+            status_counts = {status: count for status, count in cur.fetchall()}
+            for status, count in status_counts.items():
+                print(f"  {status}: {count}")
+            error_count = status_counts.get('error', 0) + status_counts.get('failed', 0)
+            if error_count:
+                print("\nErrors:")
+                cur.execute('''
+                    SELECT relative_path, verify_error FROM verification_deep_results
+                    WHERE verify_status IN ('error', 'failed') AND timestamp = (
+                        SELECT MAX(timestamp) FROM verification_deep_results vd2 WHERE vd2.relative_path = verification_deep_results.relative_path
+                    )
+                    ORDER BY relative_path
+                ''')
+                for row in cur.fetchall():
+                    print(f"{row[0]} | error: {row[1]}")
+        if error_count:
+            return 1
     return 0
 
 def handle_resume(args):
@@ -284,22 +335,22 @@ def handle_status(args):
         pending = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM source_files WHERE copy_status='error'")
         error = cur.fetchone()[0]
-        print(f"Done: {done}, Pending: {pending}, Error: {error}")
+        logging.info(f"Done: {done}, Pending: {pending}, Error: {error}")
     return 0
 
 def handle_log(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        print('Copied files (destination_files):')
+        logging.info('Copied files (destination_files):')
         cur.execute("SELECT uid, relative_path, size, last_modified, copy_status FROM destination_files WHERE copy_status='done'")
         for row in cur.fetchall():
-            print(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]} | status: {row[4]}")
-        print('---')
-        print('Errors (source_files):')
+            logging.info(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]} | status: {row[4]}")
+        logging.info('---')
+        logging.info('Errors (source_files):')
         cur.execute("SELECT uid, relative_path, copy_status, error_message FROM source_files WHERE copy_status='error'")
         for row in cur.fetchall():
-            print(f"{row[0]} | {row[1]} | status: {row[2]} | error: {row[3]}")
+            logging.warning(f"{row[0]} | {row[1]} | status: {row[2]} | error: {row[3]}")
     return 0
 
 def handle_deep_verify(args):
@@ -311,7 +362,7 @@ def handle_verify_status(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        print('Shallow Verification Results:')
+        logging.info('Shallow Verification Results:')
         cur.execute('''
             SELECT relative_path, verify_status, verify_error, expected_size, actual_size, expected_last_modified, actual_last_modified
             FROM verification_shallow_results
@@ -319,14 +370,14 @@ def handle_verify_status(args):
             ORDER BY relative_path
         ''')
         for row in cur.fetchall():
-            print(f"{row[0]} | status: {row[1]} | error: {row[2]} | size: {row[4]}/{row[3]} | mtime: {row[6]}/{row[5]}")
+            logging.info(f"{row[0]} | status: {row[1]} | error: {row[2]} | size: {row[4]}/{row[3]} | mtime: {row[6]}/{row[5]}")
     return 0
 
 def handle_deep_verify_status(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        print('Deep Verification Results:')
+        logging.info('Deep Verification Results:')
         cur.execute('''
             SELECT relative_path, verify_status, verify_error, expected_checksum, src_checksum, dst_checksum, timestamp
             FROM verification_deep_results
@@ -334,7 +385,7 @@ def handle_deep_verify_status(args):
             ORDER BY relative_path
         ''')
         for row in cur.fetchall():
-            print(f"{row[0]} | status: {row[1]} | error: {row[2]} | expected: {row[3]} | src: {row[4]} | dst: {row[5]} | ts: {row[6]}")
+            logging.info(f"{row[0]} | status: {row[1]} | error: {row[2]} | expected: {row[3]} | src: {row[4]} | dst: {row[5]} | ts: {row[6]}")
     return 0
 
 def handle_add_file(args):
@@ -391,7 +442,7 @@ def handle_import_checksums(args):
         cur = conn.cursor()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checksum_cache'")
         if not cur.fetchone():
-            print(f"Error: The other database does not have a checksum_cache table.", file=sys.stderr)
+            logging.error(f"Error: The other database does not have a checksum_cache table.")
             sys.exit(1)
         # Import all rows from other checksum_cache
         cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
@@ -404,7 +455,7 @@ def handle_import_checksums(args):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, row)
         conn.commit()
-    print(f"Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
+    logging.info(f"Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
     return 0
 
 def run_main_command(args):
@@ -443,8 +494,9 @@ def run_main_command(args):
     elif args.command == 'remove-file':
         return handle_remove_file(args)
 
-    print("No command specified or unknown command.")
+    logging.error("No command specified or unknown command.")
     return 1
 
 if __name__ == "__main__":
+    setup_logging()
     main()

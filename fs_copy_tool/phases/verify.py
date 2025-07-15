@@ -1,3 +1,16 @@
+def verify_files(db_path, src_roots, dst_roots, stage='shallow'):
+    """
+    Unified verify function: runs shallow or deep verification based on stage.
+    Args:
+        db_path (str): Path to job database.
+        src_roots (list): List of source root directories.
+        dst_roots (list): List of destination root directories.
+        stage (str): 'shallow' or 'deep'.
+    """
+    if stage == 'shallow':
+        shallow_verify_files(db_path, src_roots, dst_roots)
+    else:
+        deep_verify_files(db_path, src_roots, dst_roots)
 import logging
 import sqlite3
 import time
@@ -50,7 +63,8 @@ def shallow_verify_files(db_path, src_roots, dst_roots):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (uid, rel_path, exists, size_matched, last_modified_matched, expected_size, actual_size, expected_last_modified, actual_last_modified, verify_status, verify_error, timestamp))
             conn.commit()
-        logging.info(f"Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+        logging.debug(f"Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+    logging.info(f"Shallow verification complete: {len(files)} files processed.")
 
 def deep_verify_files(db_path, src_roots, dst_roots):
     """Deep verification: compare checksums between source and destination, using cache as the only source of truth."""
@@ -63,25 +77,17 @@ def deep_verify_files(db_path, src_roots, dst_roots):
         cur.execute("SELECT uid, relative_path, size, last_modified FROM destination_files WHERE copy_status='done'")
         files = cur.fetchall()
     for uid, rel_path, size, last_modified in files:
-        dst_file = uid_path.reconstruct_path(uid, rel_path)
-        expected_checksum = checksum_cache.get(str(dst_file)) if dst_file else None
+        logging.info(f"[DEEP VERIFY] UID: {uid}, rel_path: {rel_path}")
+        src_file = uid_path.reconstruct_path(uid, rel_path)
+        dst_file_actual = uid_path.reconstruct_path(uid, rel_path)
+        expected_checksum = checksum_cache.get(str(dst_file_actual)) if dst_file_actual else None
         checksum_matched = 0
         verify_status = 'ok'
         verify_error = None
-        src_file = None
-        dst_file_actual = None
         src_checksum = None
         dst_checksum = None
-        for src_root in src_roots:
-            candidate = Path(src_root) / rel_path
-            if candidate.exists():
-                src_file = candidate
-                break
-        for dst_root in dst_roots:
-            candidate = Path(dst_root) / rel_path
-            if candidate.exists():
-                dst_file_actual = candidate
-                break
+        logging.info(f"[DEEP VERIFY] src_file: {src_file}, exists: {src_file.exists() if src_file else False}")
+        logging.info(f"[DEEP VERIFY] dst_file_actual: {dst_file_actual}, exists: {dst_file_actual.exists() if dst_file_actual else False}")
         if not src_file or not src_file.exists():
             verify_status = 'error'
             verify_error = 'Source file missing'
@@ -103,4 +109,5 @@ def deep_verify_files(db_path, src_roots, dst_roots):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (uid, rel_path, checksum_matched, expected_checksum, src_checksum, dst_checksum, verify_status, verify_error, timestamp))
             conn.commit()
-        logging.info(f"Deep verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+        logging.debug(f"Deep verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+    logging.info(f"Deep verification complete: {len(files)} files processed.")

@@ -33,8 +33,18 @@ def test_cli_workflow(tmp_path):
     args = main.parse_args(["copy", "--job-dir", str(job_dir), "--src", str(src_dir), "--dst", str(dst_dir), "--threads", "3"])
     assert main.run_main_command(args) == 0
 
-    # 5. Verify phase
-    args = main.parse_args(["verify", "--job-dir", str(job_dir), "--src", str(src_dir), "--dst", str(dst_dir)])
+
+    # 5. Shallow verify phase
+    args = main.parse_args(["verify", "--job-dir", str(job_dir), "--src", str(src_dir), "--dst", str(dst_dir), "--stage", "shallow"])
+    assert main.run_main_command(args) == 0
+
+    # Ensure source files exist before deep verify
+    for i in range(5):
+        src_file = src_dir / f"file{i}.txt"
+        assert src_file.exists(), f"Source file missing before deep verify: {src_file}"
+
+    # 6. Deep verify phase
+    args = main.parse_args(["verify", "--job-dir", str(job_dir), "--src", str(src_dir), "--dst", str(dst_dir), "--stage", "deep"])
     assert main.run_main_command(args) == 0
 
     # Assert all files exist in destination
@@ -44,9 +54,17 @@ def test_cli_workflow(tmp_path):
         assert found, f"file{i}.txt not found in {dst_dir}"
         assert found[0].read_text() == f"hello world {i}"
 
-    # Optionally, check DB for status
+    # Optionally, check DB for status and verify results
     db_path = job_dir / "copytool.db"
     with sqlite3.connect(db_path) as conn:
         for i in range(5):
             row = conn.execute("SELECT copy_status FROM source_files WHERE relative_path LIKE ?", (f"%file{i}.txt",)).fetchone()
             assert row and row[0] == 'done'
+        # Check shallow verify results
+        for i in range(5):
+            row = conn.execute("SELECT verify_status FROM verification_shallow_results WHERE relative_path LIKE ? ORDER BY timestamp DESC LIMIT 1", (f"%file{i}.txt",)).fetchone()
+            assert row and row[0] == 'ok'
+        # Check deep verify results
+        for i in range(5):
+            row = conn.execute("SELECT verify_status FROM verification_deep_results WHERE relative_path LIKE ? ORDER BY timestamp DESC LIMIT 1", (f"%file{i}.txt",)).fetchone()
+            assert row and row[0] == 'ok'

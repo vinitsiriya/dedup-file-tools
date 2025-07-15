@@ -13,132 +13,81 @@ All commands are run via the project's virtual environment Python:
 
 ## Commands
 
-### init
-Initialize a new job directory and database.
-```
+
+### Main Commands & Options
 init --job-dir <path>
-```
+Initialize a new job directory (creates database and state files).
 
-### import-checksums
-Import checksums from another job's `checksum_cache` table. Only `checksum_cache` is supported for import as of 2025-07-15. These imported checksums are used as a fallback when the main tables are missing a checksum.
-```
 import-checksums --job-dir <path> --other-db <other_db_path>
-```
-- Only `--other-db` is supported; legacy options are not available.
+Import checksums from another compatible job database.
 
-### analyze
-Scan source and/or destination volumes, gather file metadata, and update the database. Uses `UidPath` abstraction for robust file tracking.
-```
 analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
-```
+Analyze source and/or destination volumes to gather file metadata.
 
-### checksum
-Compute and update checksums for files in the database. Uses `ChecksumCache` for all checksum operations.
-```
 checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]
-```
-- `--threads` defaults to 4.
-- `--no-progress` disables the progress bar.
+Compute or update checksums for files in the specified table.
 
-
-### copy
-Copy files from source to destination. Before copying, the tool updates and validates all destination pool checksums with a progress bar. Skips already completed files and resumes incomplete jobs by default. Deduplication is performed using `ChecksumCache`.
-```
 copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]
-```
-- `--resume` is always enabled by default and can be omitted.
-- *Before copying, all destination pool checksums are updated and validated with a progress bar to ensure deduplication is accurate and up to date.*
+Copy files from source to destination, skipping duplicates and resuming incomplete jobs.
+--resume is always enabled by default and can be omitted.
+Before copying, all destination pool checksums are updated and validated with a progress bar to ensure deduplication is accurate and up to date.
 
-### resume
-Alias for `copy`. Retries pending/error files and skips completed ones.
-```
 resume --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]
-```
+Resume interrupted or failed copy operations.
 
-### status
-Show job progress and statistics.
-```
 status --job-dir <path>
-```
+Show job progress and statistics.
 
-### log
-Show job log or audit trail.
-```
 log --job-dir <path>
-```
+Show job log or audit trail.
 
-### verify
-Shallow or deep verify: check existence, size, last_modified, or checksums. Results are stored for auditability.
-```
 verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--stage <shallow|deep>]
-```
-- `--stage` defaults to `shallow`.
+Verify copied files. Use --stage shallow for basic attribute checks, or --stage deep for checksum comparison.
 
-### deep-verify
-Deep verify: compare checksums between source and destination using `ChecksumCache` as the only source of truth.
-```
 deep-verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
-```
+Perform deep verification (checksum comparison) between source and destination.
 
-### verify-status
-Show a summary of the latest shallow verification results for each file.
-```
 verify-status --job-dir <path>
-```
+Show a summary of the latest shallow verification results for each file.
 
-### deep-verify-status
-Show a summary of the latest deep verification results for each file.
-```
 deep-verify-status --job-dir <path>
-```
+Show a summary of the latest deep verification results for each file.
 
-### verify-status-summary
-Show a short summary of the latest shallow verification results for each file.
-```
 verify-status-summary --job-dir <path>
-```
+Show a short summary of shallow verification results.
 
-### verify-status-full
-Show all shallow verification results (full history).
-```
 verify-status-full --job-dir <path>
-```
+Show all shallow verification results (full history).
 
-### deep-verify-status-summary
-Show a short summary of the latest deep verification results for each file.
-```
 deep-verify-status-summary --job-dir <path>
-```
+Show a short summary of deep verification results.
 
-### deep-verify-status-full
-Show all deep verification results (full history).
-```
 deep-verify-status-full --job-dir <path>
-```
+Show all deep verification results (full history).
 
-### add-file
-Add a single file to the job state/database. Uses `UidPath` abstraction for robust file tracking.
-```
 add-file --job-dir <path> --file <file_path>
-```
+Add a single file to the job database.
 
-### add-source
-Recursively add all files from a directory to the job state/database. Uses `UidPath` abstraction for robust file tracking.
-```
 add-source --job-dir <path> --src <src_dir>
-```
+Recursively add all files from a directory to the job database.
+(Uses batching and multithreading for fast file addition; progress bar is shown for large directories.)
 
-### list-files
-List all files currently in the job state/database.
-```
+add-to-destination-index-pool --job-dir <path> --dst <dst_dir>
+Scan and add/update all files in the destination pool index.
+
 list-files --job-dir <path>
-```
+List all files currently in the job database.
 
-### remove-file
-Remove a file from the job state/database.
-```
 remove-file --job-dir <path> --file <file_path>
-```
+Remove a file from the job database.
+
+Notes:
+
+All commands are run via Python (use the virtual environment if available):
+Or, if installed as a package:
+For verification, always use --stage shallow or --stage deep (not --phase).
+The add-source command is optimized for large datasets using batching and multithreading, and will show a progress bar for visibility.
+All operations are resumable, auditable, and robust against interruption.
 
 ## Best Practices
 - Always use a dedicated job directory for each migration session.
