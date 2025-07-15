@@ -112,6 +112,9 @@ fs-copy-tool <command> [options]
 - `deep-verify-status-full --job-dir <path>`
 - `add-file --job-dir <path> --file <file_path>`
 - `add-source --job-dir <path> --src <src_dir>`
+- `add-to-destination-index-pool --job-dir <path> --dst <dst_dir>`
+- `list-files --job-dir <path>`
+- `remove-file --job-dir <path> --file <file_path>`
 - `list-files --job-dir <path>`
 - `remove-file --job-dir <path> --file <file_path>`
 

@@ -28,10 +28,32 @@ Manual tests are used for interactive or exploratory testing, especially for sce
 - Verify incremental job setup, file addition/removal, and correct operation of all phases after stateful setup.
 - Directory-level state is not supported; manual tests must operate at the file level.
 
-## Example Scenarios
-- Each subdirectory in `manual_tests/` can cover a different scenario:
-  - Deduplication, file addition/removal, copy/resume, verification, interruption/recovery
-  - Deeply nested directories, long filenames, special characters, etc.
-  - Performance and correctness with large files
-  - ...add more as needed
-- To add more scenarios, copy and adapt scripts in the `manual_tests/` directory.
+
+## Destination Pool Manual Test Scenarios
+
+### 1. Pool Index Creation and Update
+- Create a destination directory with several files.
+- Run `add-to-destination-index-pool` to scan and index all files.
+- Add, modify, or remove files in the destination and rerun the command to verify updates.
+- Check the database to confirm the `destination_pool_files` table is accurate.
+
+### 2. Pool Deduplication During Copy
+- Create a source directory with files, some of which are already present in the destination.
+- Run the full workflow: `init`, `analyze`, `checksum`, `add-to-destination-index-pool`, then `copy`.
+- Verify that files already present in the pool are skipped and only new files are copied.
+- Check CLI/log output and database for correct deduplication behavior.
+
+### 3. Pool Index Resilience
+- Interrupt the pool scan or copy operation and resume.
+- Verify that the pool index and deduplication remain correct and idempotent.
+
+### 4. Edge Cases
+- Test with large files, deeply nested directories, and files with special characters in the destination.
+- Verify that the pool index and deduplication logic handle all cases robustly.
+
+### 5. Manual Database Inspection
+- Use a SQLite browser to inspect the `destination_pool_files` table after each operation.
+- Confirm that all expected files are indexed and deduplication logic is correct.
+
+---
+To add more scenarios, copy and adapt scripts in the `manual_tests/` directory.
