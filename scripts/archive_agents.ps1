@@ -2,10 +2,11 @@
 $timestamp = Get-Date -Format "yyyy-MM-dd-HHmm"
 $archiveDir = "agents/workflow/archived/$timestamp"
 
+
 # Gather all .md files in proposal and user-story (recursively)
-$proposalFiles = Get-ChildItem -Path "agents/workflow/proposal" -Filter *.md -Recurse -File
-$userStoryFiles = Get-ChildItem -Path "agents/workflow/user-story" -Filter *.md -Recurse -File
-$allFiles = $proposalFiles + $userStoryFiles
+$proposalFiles = @(Get-ChildItem -Path "agents/workflow/proposal" -Filter *.md -Recurse -File)
+$userStoryFiles = @(Get-ChildItem -Path "agents/workflow/user-story" -Filter *.md -Recurse -File)
+$allFiles = @($proposalFiles + $userStoryFiles)
 
 if ($allFiles.Count -eq 0) {
     Write-Host "No proposal or user story .md files found to archive."
