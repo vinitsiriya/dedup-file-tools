@@ -63,7 +63,7 @@ def shallow_verify_files(db_path, src_roots, dst_roots):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (uid, rel_path, exists, size_matched, last_modified_matched, expected_size, actual_size, expected_last_modified, actual_last_modified, verify_status, verify_error, timestamp))
             conn.commit()
-        logging.debug(f"Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+        logging.info(f"Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
     logging.info(f"Shallow verification complete: {len(files)} files processed.")
 
 def deep_verify_files(db_path, src_roots, dst_roots):
@@ -95,8 +95,8 @@ def deep_verify_files(db_path, src_roots, dst_roots):
             verify_status = 'error'
             verify_error = 'Destination file missing'
         else:
-            src_checksum = checksum_cache.get_or_compute(str(src_file))
-            dst_checksum = checksum_cache.get_or_compute(str(dst_file_actual))
+            src_checksum = checksum_cache.get_or_compute_with_invalidation(str(src_file))
+            dst_checksum = checksum_cache.get_or_compute_with_invalidation(str(dst_file_actual))
             if src_checksum == dst_checksum == expected_checksum:
                 checksum_matched = 1
             else:
@@ -109,5 +109,5 @@ def deep_verify_files(db_path, src_roots, dst_roots):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (uid, rel_path, checksum_matched, expected_checksum, src_checksum, dst_checksum, verify_status, verify_error, timestamp))
             conn.commit()
-        logging.debug(f"Deep verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+        logging.info(f"Deep verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
     logging.info(f"Deep verification complete: {len(files)} files processed.")

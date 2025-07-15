@@ -44,18 +44,19 @@ def scan_files_on_volume(volume_root, uid_path: UidPath):
             }
 
 def analyze_volumes(db_path, volume_roots, table):
+    import concurrent.futures
     uid_path = UidPath()
-    total_files = 0
-    # First, count total files for progress bar
+    # Collect all file_info objects first (for progress bar sizing)
+    file_infos = []
     for root in volume_roots:
-        for _ in scan_files_on_volume(root, uid_path):
-            total_files += 1
+        file_infos.extend(scan_files_on_volume(root, uid_path))
+    total_files = len(file_infos)
     if total_files == 0:
         return
-    # Now process with progress bar
     with tqdm(total=total_files, desc=f"Analyzing {table}") as pbar:
-        for root in volume_roots:
-            for file_info in scan_files_on_volume(root, uid_path):
-                persist_file_metadata(db_path, table, file_info)
-                logging.info(f"Indexed: {file_info['uid']}:{file_info['relative_path']}")
-                pbar.update(1)
+        def process_file(file_info):
+            persist_file_metadata(db_path, table, file_info)
+            logging.info(f"Indexed: {file_info['uid']}:{file_info['relative_path']} size={file_info['size']} mtime={file_info['last_modified']}")
+            pbar.update(1)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            list(executor.map(process_file, file_infos))

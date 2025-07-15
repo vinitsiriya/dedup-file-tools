@@ -31,17 +31,18 @@ def reset_status_for_missing_files(db_path, dst_roots):
         candidates = cur.fetchall()
         for uid, rel_path, copy_status in candidates:
             logging.debug(f"Checking file: uid={uid}, rel_path={rel_path}, copy_status={copy_status}")
+            logging.info(f"Checking file: uid={uid}, rel_path={rel_path}, copy_status={copy_status}")
             sys.stderr.flush()
             missing = True
             for dst_root in dst_roots:
                 dst_file = Path(dst_root) / rel_path
-                logging.debug(f"  Checking dst_file={dst_file} exists={dst_file.exists()}")
+                logging.info(f"  Checking dst_file={dst_file} exists={dst_file.exists()}")
                 sys.stderr.flush()
                 if dst_file.exists():
                     missing = False
                     break
             if copy_status == 'done' and missing:
-                logging.debug(f"Resetting {rel_path} to pending (was done, now missing)")
+                logging.info(f"Resetting {rel_path} to pending (was done, now missing)")
                 sys.stderr.flush()
                 mark_copy_status(db_path, uid, rel_path, 'pending', 'Destination file missing, will retry')
         conn.commit()  # Ensure all changes are flushed
@@ -106,17 +107,18 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     def process_copy(args):
         uid, rel_path, size, last_modified = args
         logging.debug(f"process_copy: uid={uid}, rel_path={rel_path}, thread={threading.current_thread().name}")
+        logging.info(f"process_copy: uid={uid}, rel_path={rel_path}, thread={threading.current_thread().name}")
         sys.stderr.flush()
         # Always use UidPath to reconstruct the source file path
         src_file = uid_path.reconstruct_path(uid, rel_path)
-        logging.debug(f"src_file resolved to: {src_file}")
+        logging.info(f"src_file resolved to: {src_file}")
         sys.stderr.flush()
         if not src_file or not src_file.exists():
-            logging.debug(f"Source file not found: {src_file}")
+            logging.error(f"Source file not found: {src_file}")
             mark_copy_status(db_path, uid, rel_path, 'error', 'Source file not found for resume')
             return False
-        checksum = checksum_cache.get_or_compute(str(src_file))
-        logging.debug(f"checksum for src_file: {checksum}")
+        checksum = checksum_cache.get_or_compute_with_invalidation(str(src_file))
+        logging.info(f"checksum for src_file: {checksum}")
         sys.stderr.flush()
         if not checksum:
             mark_copy_status(db_path, uid, rel_path, 'error', 'No valid checksum in cache and cannot compute')
@@ -137,18 +139,18 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
             return True
         for dst_root in dst_roots:
             dst_file = Path(dst_root) / rel_path
-            logging.debug(f"About to create parent dir: {dst_file.parent}")
+            logging.info(f"About to create parent dir: {dst_file.parent}")
             sys.stderr.flush()
             dst_file.parent.mkdir(parents=True, exist_ok=True)
-            logging.debug(f"Parent dir exists: {dst_file.parent.exists()} (should be True)")
-            logging.debug(f"About to copy: {src_file} -> {dst_file}")
+            logging.info(f"Parent dir exists: {dst_file.parent.exists()} (should be True)")
+            logging.info(f"About to copy: {src_file} -> {dst_file}")
             sys.stderr.flush()
             mark_copy_status(db_path, uid, rel_path, 'in_progress')
             def log_progress(percent, copied, total):
                 if percent % 10 == 0 or percent == 100:
                     logging.info(f"[AGENT][COPY][PROGRESS] {rel_path}: {percent}% ({copied}/{total} bytes)")
             src_checksum, dst_checksum = copy_file(src_file, dst_file, progress_callback=log_progress, show_progressbar=True)
-            logging.debug(f"Copy complete: {src_file} -> {dst_file} exists={dst_file.exists()} size={dst_file.stat().st_size if dst_file.exists() else 'N/A'}")
+            logging.info(f"Copy complete: {src_file} -> {dst_file} exists={dst_file.exists()} size={dst_file.stat().st_size if dst_file.exists() else 'N/A'}")
             sys.stderr.flush()
             if src_checksum == dst_checksum == checksum:
                 with sqlite3.connect(db_path) as conn:
@@ -163,12 +165,12 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
                     """, (uid, rel_path, size, last_modified))
                     conn.commit()
                 mark_copy_status(db_path, uid, rel_path, 'done')
-                logging.debug(f"File copy verified and marked done: {dst_file}")
+                logging.info(f"File copy verified and marked done: {dst_file}")
                 sys.stderr.flush()
                 return True
             else:
                 mark_copy_status(db_path, uid, rel_path, 'error', 'Checksum mismatch after copy')
-                logging.debug(f"Checksum mismatch after copy: src={src_checksum}, dst={dst_checksum}, expected={checksum}")
+                logging.error(f"Checksum mismatch after copy: src={src_checksum}, dst={dst_checksum}, expected={checksum}")
                 sys.stderr.flush()
                 return False
     with ThreadPoolExecutor(max_workers=threads) as executor:

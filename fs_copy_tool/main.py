@@ -58,7 +58,7 @@ def add_file_to_db(db_path, file_path):
                     last_modified=excluded.last_modified
             """, (uid, rel, stat.st_size, int(stat.st_mtime)))
             conn.commit()
-        logging.debug(f"Added file: {file_path}")
+        logging.info(f"Added file: {file_path}")
     except Exception as e:
         logging.error(f"Error adding file: {file_path}\n{e}")
         sys.exit(1)
@@ -74,6 +74,8 @@ def add_source_to_db(db_path, src_dir):
     files = [file for file in src.rglob("*") if file.is_file()]
     count = 0
     batch_size = max(100, len(files) // 10)  # 10 threads, each gets a batch
+    from threading import Lock
+    pbar_lock = Lock()
     def process_batch(batch):
         local_count = 0
         for file in batch:
@@ -93,6 +95,8 @@ def add_source_to_db(db_path, src_dir):
                 """, (uid, rel, stat.st_size, int(stat.st_mtime)))
                 conn.commit()
             local_count += 1
+            with pbar_lock:
+                pbar.update(1)
         return local_count
     batches = [files[i:i+batch_size] for i in range(0, len(files), batch_size)]
     with tqdm(total=len(files), desc=f"Adding files from {src_dir}") as pbar:
@@ -100,7 +104,6 @@ def add_source_to_db(db_path, src_dir):
             results = executor.map(process_batch, batches)
             for batch_count in results:
                 count += batch_count
-                pbar.update(batch_count)
     logging.info(f"Added {count} files from directory: {src_dir}")
     if count > 0:
         logging.info(f"Batch add complete: {count} files added from {src_dir}")
@@ -111,7 +114,7 @@ def list_files_in_db(db_path):
         cur.execute("SELECT uid, relative_path, size, last_modified FROM source_files ORDER BY uid, relative_path")
         rows = cur.fetchall()
         for row in rows:
-            logging.debug(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]}")
+            logging.info(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]}")
     logging.info(f"Total files: {len(rows)}")
 
 def remove_file_from_db(db_path, file_path):
@@ -237,6 +240,10 @@ def parse_args(args=None):
 
 def main(args=None):
     parsed_args = parse_args(args)
+    # Always set up logging with job_dir if available
+    job_dir = getattr(parsed_args, 'job_dir', None)
+    from fs_copy_tool.utils.logging_config import setup_logging
+    setup_logging(job_dir)
     return run_main_command(parsed_args)
 
 def handle_init(args):
@@ -268,7 +275,7 @@ def handle_copy(args):
     if pool_files:
         with tqdm(total=len(pool_files), desc="Updating pool checksums") as pbar:
             for uid, rel_path in pool_files:
-                checksum_cache.get_or_compute(UidPath().reconstruct_path(uid, rel_path))
+                checksum_cache.get_or_compute_with_invalidation(UidPath().reconstruct_path(uid, rel_path))
                 pbar.update(1)
     # Step 2: Always check both path and pool deduplication in copy_files
     copy_files(db_path, args.src, args.dst, threads=args.threads)
@@ -425,7 +432,7 @@ def handle_checksum(args):
         file_path = uid_path.reconstruct_path(uid, rel_path)
         if not file_path or not file_path.exists():
             return None
-        checksum = checksum_cache.get_or_compute(str(file_path))
+        checksum = checksum_cache.get_or_compute_with_invalidation(str(file_path))
         return True if checksum else None
     with tqdm(total=len(rows), desc=f"Checksumming {args.table}") as pbar:
         with ThreadPoolExecutor(max_workers=args.threads) as executor:

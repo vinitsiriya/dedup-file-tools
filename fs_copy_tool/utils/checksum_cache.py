@@ -4,7 +4,42 @@ from pathlib import Path
 from fs_copy_tool.utils.fileops import compute_sha256
 import time
 
+   
+import sqlite3
+from typing import Optional
+from pathlib import Path
+from fs_copy_tool.utils.fileops import compute_sha256
+import time
+
 class ChecksumCache:
+
+    def get_or_compute_with_invalidation(self, path: str) -> Optional[str]:
+        """
+        Get checksum from cache if file exists and size/mtime match; otherwise, recompute and update cache.
+        """
+        uid, rel_path = self.uid_path.convert_path(path)
+        if not uid:
+            return None
+        file_path = Path(path)
+        if not file_path.exists():
+            return None
+        stat = file_path.stat()
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT checksum, size, last_modified, is_valid FROM checksum_cache WHERE uid=? AND relative_path=? ORDER BY last_validated DESC LIMIT 1",
+                (uid, str(rel_path))
+            )
+            row = cur.fetchone()
+        if row and row[0] and row[3] == 1:
+            cached_checksum, cached_size, cached_mtime, _ = row
+            if cached_size == stat.st_size and cached_mtime == int(stat.st_mtime):
+                return cached_checksum
+        # If not valid or file changed, recompute and update
+        checksum = compute_sha256(file_path)
+        if checksum:
+            self.insert_or_update(path, stat.st_size, int(stat.st_mtime), checksum)
+        return checksum
 
     def exists_at_destination_pool(self, checksum: str) -> bool:
         """
@@ -24,14 +59,7 @@ class ChecksumCache:
                 (checksum,)
             )
             return cur.fetchone() is not None
-import sqlite3
-from typing import Optional
-from pathlib import Path
-from fs_copy_tool.utils.fileops import compute_sha256
-import time
-
-class ChecksumCache:
-
+        
     def exists_at_destination_pool(self, checksum: str) -> bool:
         """
         Check if the given checksum exists and is valid at any file in the destination pool.
