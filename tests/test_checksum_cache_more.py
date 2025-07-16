@@ -1,3 +1,11 @@
+import os
+import sqlite3
+import tempfile
+import pytest
+from pathlib import Path
+from fs_copy_tool.utils.checksum_cache import ChecksumCache
+from fs_copy_tool.utils.uidpath import UidPathUtil
+
 def setup_test_db_with_pool(tmp_path):
     db_path = tmp_path / "test.db"
     conn = sqlite3.connect(db_path)
@@ -30,14 +38,15 @@ def setup_test_db_with_pool(tmp_path):
 
 def test_exists_at_destination_pool(tmp_path):
     db_path = setup_test_db_with_pool(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     # Create a temp file and add to both tables
     file_path = tmp_path / "file1.txt"
     file_path.write_text("hello world")
     stat = file_path.stat()
     checksum = "dummychecksum123"
-    uid, rel = uid_path.convert_path(str(file_path))
+    uid_path_obj = uid_path.convert_path(str(file_path))
+    uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
     # Add to destination_pool_files
     with sqlite3.connect(db_path) as conn:
         conn.execute("INSERT INTO destination_pool_files (uid, relative_path, size, last_modified, last_seen) VALUES (?, ?, ?, ?, 0)", (uid, str(rel), stat.st_size, int(stat.st_mtime)))
@@ -47,13 +56,6 @@ def test_exists_at_destination_pool(tmp_path):
     assert cache.exists_at_destination_pool(checksum)
     # Should not find a random checksum
     assert not cache.exists_at_destination_pool("not_a_real_checksum")
-import os
-import sqlite3
-import tempfile
-import pytest
-from pathlib import Path
-from fs_copy_tool.utils.checksum_cache import ChecksumCache
-from fs_copy_tool.utils.uidpath import UidPath
 
 def setup_test_db(tmp_path):
     db_path = tmp_path / "test.db"
@@ -77,7 +79,7 @@ def setup_test_db(tmp_path):
 
 def test_update_existing_entry(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "file_update.txt"
     file_path.write_text("first")
@@ -91,7 +93,7 @@ def test_update_existing_entry(tmp_path):
 
 def test_multiple_files_and_uids(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file1 = tmp_path / "file1.txt"
     file2 = tmp_path / "file2.txt"
@@ -106,7 +108,7 @@ def test_multiple_files_and_uids(tmp_path):
 
 def test_invalid_entries_are_ignored(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "file_invalid.txt"
     file_path.write_text("data")
@@ -122,7 +124,7 @@ def test_invalid_entries_are_ignored(tmp_path):
 
 def test_subdirectory_file(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     subdir = tmp_path / "sub1" / "sub2"
     subdir.mkdir(parents=True)

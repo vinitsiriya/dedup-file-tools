@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS verification_shallow_results (
     verify_status TEXT,
     verify_error TEXT,
     timestamp INTEGER,
-    PRIMARY KEY (uid, relative_path, timestamp)
+    PRIMARY KEY (uid, relative_path)
 );
 
 -- Deep verification results
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS verification_deep_results (
     verify_status TEXT,
     verify_error TEXT,
     timestamp INTEGER,
-    PRIMARY KEY (uid, relative_path, timestamp)
+    PRIMARY KEY (uid, relative_path)
 );
 '''
 

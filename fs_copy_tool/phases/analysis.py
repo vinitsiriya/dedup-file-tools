@@ -4,7 +4,7 @@ Description: Analysis phase logic (scanning and metadata extraction)
 """
 import logging
 import sqlite3
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 from fs_copy_tool.utils.fileops import compute_sha256
 from pathlib import Path
 import os
@@ -22,7 +22,7 @@ def persist_file_metadata(db_path, table, file_info):
         """, (file_info['uid'], file_info['relative_path'], file_info['size'], file_info['last_modified']))
         conn.commit()
 
-def scan_files_on_volume(volume_root, uid_path: UidPath):
+def scan_files_on_volume(volume_root, uid_path: UidPathUtil):
     # Always use UidPath.convert_path for every file, even in test directories
     mountpoint = volume_root if os.path.isdir(volume_root) else uid_path.get_mount_point_from_volume_id(uid_path.get_volume_id_from_path(volume_root))
     if not mountpoint:
@@ -30,7 +30,8 @@ def scan_files_on_volume(volume_root, uid_path: UidPath):
         return
     for file in Path(mountpoint).rglob("*"):
         if file.is_file():
-            uid, rel = uid_path.convert_path(str(file))
+            uid_path_obj = uid_path.convert_path(str(file))
+            uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
             if uid is None:
                 logging.error(f"Could not determine UID for file {file}")
                 continue
@@ -45,7 +46,7 @@ def scan_files_on_volume(volume_root, uid_path: UidPath):
 
 def analyze_volumes(db_path, volume_roots, table):
     import concurrent.futures
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     # Collect all file_info objects first (for progress bar sizing)
     file_infos = []
     for root in volume_roots:

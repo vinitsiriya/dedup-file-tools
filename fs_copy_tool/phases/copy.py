@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 from fs_copy_tool.utils.fileops import copy_file, verify_file
 from fs_copy_tool.utils.checksum_cache import ChecksumCache
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil, UidPath
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
@@ -88,7 +88,7 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     from concurrent.futures import ThreadPoolExecutor, as_completed
     logging.info(f"copy_files: db_path={db_path}, src_roots={src_roots}, dst_roots={dst_roots}")
     sys.stderr.flush()
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     checksum_cache = ChecksumCache(db_path, uid_path)
     src_roots = [str(Path(root).resolve()) for root in (src_roots or [])]
     reset_status_for_missing_files(db_path, dst_roots)
@@ -121,7 +121,8 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
         logging.info(f"process_copy: uid={uid}, rel_path={rel_path}, thread={threading.current_thread().name}")
         sys.stderr.flush()
         # Always use UidPath to reconstruct the source file path
-        src_file = uid_path.reconstruct_path(uid, rel_path)
+        uid_path_obj = UidPath(uid, rel_path)
+        src_file = uid_path.reconstruct_path(uid_path_obj)
         logging.info(f"src_file resolved to: {src_file}")
         sys.stderr.flush()
         if not src_file or not src_file.exists():

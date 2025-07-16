@@ -2,7 +2,7 @@ import sqlite3
 import pytest
 from pathlib import Path
 from fs_copy_tool.utils.checksum_cache import ChecksumCache
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 
 def setup_test_db(tmp_path):
     db_path = tmp_path / "test.db"
@@ -26,7 +26,7 @@ def setup_test_db(tmp_path):
 
 def test_get_or_compute_with_invalidation_basic(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "file.txt"
     file_path.write_text("hello world")
@@ -39,7 +39,7 @@ def test_get_or_compute_with_invalidation_basic(tmp_path):
 
 def test_get_or_compute_with_invalidation_file_changed(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "file.txt"
     file_path.write_text("first")
@@ -55,7 +55,7 @@ def test_get_or_compute_with_invalidation_file_metadata_changed(tmp_path):
     import time
     import os
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "file.txt"
     file_path.write_text("meta test")
@@ -69,7 +69,7 @@ def test_get_or_compute_with_invalidation_file_metadata_changed(tmp_path):
 
 def test_get_or_compute_with_invalidation_missing_file(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "missing.txt"
     assert cache.get_or_compute_with_invalidation(str(file_path)) is None

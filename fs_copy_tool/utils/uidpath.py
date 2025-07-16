@@ -23,8 +23,24 @@ try:
     import wmi
 except ImportError:
     wmi = None
+from dataclasses import dataclass
+from typing import Any
 
+@dataclass(frozen=True)
 class UidPath:
+    """
+    UidPath: System-independent file reference.
+
+    Represents a file location as a (uid, relative_path) pair:
+    - uid: Unique identifier for the volume (serial number, UUID, or test path).
+    - relative_path: Path relative to the mount point or root.
+
+    Use this struct to pass file references around, instead of raw tuples.
+    """
+    uid: Any
+    relative_path: str
+
+class UidPathUtil:
     """
     UidPath provides methods to convert file paths to a (UID, relative_path) tuple and reconstruct
     absolute paths from these tuples. This abstraction allows for system-independent file referencing.
@@ -134,8 +150,8 @@ class UidPath:
         Returns:
             str or int: UID for the volume containing the path.
         """
-        _, volume_id = self.convert_path(path)
-        return volume_id
+        uid_path_obj = self.convert_path(path)
+        return uid_path_obj.uid
 
     def get_mount_point_from_volume_id(self, volume_id):
         """
@@ -167,13 +183,13 @@ class UidPath:
         """
         return set(self.mounts.values())
 
-    def convert_path(self, path):
+    def convert_path(self, path) -> 'UidPath':
         """
-        Convert an absolute file path to a (UID, relative_path) tuple.
+        Convert an absolute file path to a UidPath (uid, relative_path) struct.
         Args:
             path (str): Absolute file path.
         Returns:
-            tuple: (UID, relative_path) where relative_path is relative to the mount point.
+            UidPath: (uid, relative_path) where relative_path is relative to the mount point.
         Notes:
             - The format of relative_path is only guaranteed to be relative to the detected mount point.
             - It may be a long path segment or appear absolute in some environments (e.g., tests/temp dirs).
@@ -183,21 +199,20 @@ class UidPath:
         for mountpoint, key in sorted(self.mounts.items(), key=lambda x: -len(x[0])):
             if str(path).startswith(mountpoint):
                 relative_path = path.relative_to(mountpoint)
-                return (key, str(relative_path))
-        return None, str(path)
+                return UidPath(key, str(relative_path))
+        return UidPath(None, str(path))
 
-    def reconstruct_path(self, key1, relative_path):
+    def reconstruct_path(self, uid_path_obj: 'UidPath'):
         """
-        Reconstruct an absolute path from a UID and relative path.
+        Reconstruct an absolute path from a UidPath (uid, relative_path) struct.
         Args:
-            key1 (str or int): UID of the volume.
-            relative_path (str): Path relative to the mount point.
+            uid_path_obj (UidPath): UidPath dataclass with uid and relative_path.
         Returns:
             Path or None: Absolute path if the volume is available, else None.
         """
         for mountpoint, key in self.mounts.items():
-            if key == key1 or key == int(key1):
-                return Path(mountpoint) / relative_path
+            if key == uid_path_obj.uid or key == int(uid_path_obj.uid):
+                return Path(mountpoint) / uid_path_obj.relative_path
         return None
 
     def is_conversion_reversible(self, path):
@@ -209,9 +224,9 @@ class UidPath:
             bool: True if reversible, False otherwise.
         """
         converted = self.convert_path(path)
-        if converted[0] is None:
+        if converted.uid is None:
             return False
-        reconstructed = self.reconstruct_path(converted[0], converted[1])
+        reconstructed = self.reconstruct_path(converted)
         return reconstructed == Path(path).resolve()
 
     def get_volume_label_from_drive_letter(self, drive_letter):

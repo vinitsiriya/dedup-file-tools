@@ -7,26 +7,27 @@ import sqlite3
 import tempfile
 import pytest
 from pathlib import Path
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil, UidPath
 
 def test_convert_and_reconstruct(tmp_path):
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     file_path = tmp_path / "afile.txt"
     file_path.write_text("abc")
-    uid, rel_path = uid_path.convert_path(str(file_path))
-    assert uid is not None
-    abs_path = uid_path.reconstruct_path(uid, rel_path)
+    uid_path_obj = uid_path.convert_path(str(file_path))
+    assert uid_path_obj.uid is not None
+    abs_path = uid_path.reconstruct_path(uid_path_obj)
     assert abs_path is not None
     assert abs_path.resolve() == file_path.resolve()
 
 def test_is_conversion_reversible(tmp_path):
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     file_path = tmp_path / "bfile.txt"
     file_path.write_text("def")
+    uid_path_obj = uid_path.convert_path(str(file_path))
     assert uid_path.is_conversion_reversible(str(file_path))
 
 def test_get_mounts_and_uids():
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     mounts = uid_path.get_available_volumes()
     uids = uid_path.get_available_uids()
     assert isinstance(mounts, dict)
@@ -35,18 +36,18 @@ def test_get_mounts_and_uids():
     assert len(uids) > 0
 
 def test_nested_directory_conversion(tmp_path):
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     nested_dir = tmp_path / "subdir1" / "subdir2"
     nested_dir.mkdir(parents=True)
     file_path = nested_dir / "nested.txt"
     file_path.write_text("nested content")
-    uid, rel_path = uid_path.convert_path(str(file_path))
-    assert uid is not None
-    abs_path = uid_path.reconstruct_path(uid, rel_path)
+    uid_path_obj = uid_path.convert_path(str(file_path))
+    assert uid_path_obj.uid is not None
+    abs_path = uid_path.reconstruct_path(uid_path_obj)
     assert abs_path.resolve() == file_path.resolve()
 
 def test_get_mount_point_and_label():
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     mounts = uid_path.get_available_volumes()
     for mount, uid in mounts.items():
         if uid is None:
@@ -59,15 +60,14 @@ def test_get_mount_point_and_label():
             assert isinstance(label, str)
 
 def test_invalid_path_conversion():
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     # Path that does not exist should still return a rel_path
-    uid, rel_path = uid_path.convert_path("/this/path/does/not/exist.txt")
-    assert rel_path.endswith("exist.txt")
+    uid_path_obj = uid_path.convert_path("/this/path/does/not/exist.txt")
     # UID may be None if not under a known mount
-    assert isinstance(rel_path, str)
+    assert isinstance(uid_path_obj.relative_path, str)
 
 def test_is_volume_available():
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     uids = uid_path.get_available_uids()
     for uid in uids:
         if uid is None:

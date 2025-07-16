@@ -4,7 +4,7 @@ import tempfile
 import pytest
 from pathlib import Path
 from fs_copy_tool.phases.analysis import persist_file_metadata, scan_files_on_volume, analyze_volumes
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 
 def setup_test_db(tmp_path, table):
     db_path = tmp_path / "test_analysis.db"
@@ -41,7 +41,7 @@ def test_persist_file_metadata_insert_and_update(tmp_path):
         assert row == (456, 2222)
 
 def test_scan_files_on_volume(tmp_path):
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     d = tmp_path / "scanme"
     d.mkdir()
     (d / "a.txt").write_text("a")

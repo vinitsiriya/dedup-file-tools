@@ -2,14 +2,14 @@ import os
 import sqlite3
 import logging
 from pathlib import Path
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 from .destination_pool import DestinationPoolIndex
 
 def add_to_destination_index_pool(db_path, dst_root):
     """
     Recursively scan dst_root and add/update all files in the destination pool index.
     """
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     pool = DestinationPoolIndex(db_path, uid_path)
     dst_root = Path(dst_root)
     from tqdm import tqdm

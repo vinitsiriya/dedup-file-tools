@@ -5,7 +5,7 @@ import shutil
 import pytest
 from pathlib import Path
 from fs_copy_tool.utils.checksum_cache import ChecksumCache
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 
 def setup_test_db(tmp_path):
     db_path = tmp_path / "test.db"
@@ -29,7 +29,7 @@ def setup_test_db(tmp_path):
 
 def test_insert_and_get(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     # Create a temp file
     file_path = tmp_path / "file1.txt"
@@ -42,7 +42,7 @@ def test_insert_and_get(tmp_path):
 
 def test_get_or_compute(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "file2.txt"
     file_path.write_text("abc123")
@@ -55,7 +55,7 @@ def test_get_or_compute(tmp_path):
 
 def test_exists(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "file3.txt"
     file_path.write_text("testdata")
@@ -67,7 +67,7 @@ def test_exists(tmp_path):
 
 def test_get_missing(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "missing.txt"
     # File does not exist in cache
@@ -75,7 +75,7 @@ def test_get_missing(tmp_path):
 
 def test_get_or_compute_missing_file(tmp_path):
     db_path = setup_test_db(tmp_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     cache = ChecksumCache(db_path, uid_path)
     file_path = tmp_path / "doesnotexist.txt"
     # File does not exist on disk

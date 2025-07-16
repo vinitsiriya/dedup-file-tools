@@ -2,7 +2,7 @@ import tempfile
 import sqlite3
 from pathlib import Path
 from fs_copy_tool import main
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 import pytest
 
 def test_import_checksums_from_other_db(tmp_path):
@@ -35,8 +35,9 @@ def test_import_checksums_from_other_db(tmp_path):
 
     # 4. Validate that checksum_cache in main_job now contains the imported file
     db_path = main_job / "copytool.db"
-    uid_path = UidPath()
-    uid, rel_path = uid_path.convert_path(str(file_path))
+    uid_path = UidPathUtil()
+    uid_path_obj = uid_path.convert_path(str(file_path))
+    uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
     with sqlite3.connect(db_path) as conn:
         row = conn.execute("SELECT relative_path, checksum FROM checksum_cache WHERE uid=? AND relative_path=?", (uid, rel_path)).fetchone()
         assert row is not None, f"Checksum not imported from other db for uid={uid}, rel_path={rel_path}"

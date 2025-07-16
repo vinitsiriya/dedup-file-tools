@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from fs_copy_tool.utils.destination_pool_cli import add_to_destination_index_pool
 from fs_copy_tool.utils.destination_pool import DestinationPoolIndex
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 
 def test_add_to_destination_index_pool(tmp_path):
     db_path = tmp_path / "test.db"
@@ -33,9 +33,11 @@ def test_add_to_destination_index_pool(tmp_path):
     # Run the CLI logic
     add_to_destination_index_pool(str(db_path), str(dst_root))
     # Check that both files are in the pool index
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     pool = DestinationPoolIndex(str(db_path), uid_path)
-    uid1, rel1 = uid_path.convert_path(str(file1))
-    uid2, rel2 = uid_path.convert_path(str(file2))
+    uid_path_obj1 = uid_path.convert_path(str(file1))
+    uid1, rel1 = uid_path_obj1.uid, uid_path_obj1.relative_path
+    uid_path_obj2 = uid_path.convert_path(str(file2))
+    uid2, rel2 = uid_path_obj2.uid, uid_path_obj2.relative_path
     assert pool.exists(uid1, str(rel1))
     assert pool.exists(uid2, str(rel2))

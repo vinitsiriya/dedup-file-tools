@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 from fs_copy_tool import main
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil
 import pytest
 
 def test_e2e_import_checksums(tmp_path):
@@ -38,7 +38,7 @@ def test_e2e_import_checksums(tmp_path):
 
     # Validate both files imported in job2's checksum_cache
     db_path = job2 / "copytool.db"
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     for fname in ["a.txt", "b.txt"]:
         fpath = src_dir / fname
         uid, rel_path = uid_path.convert_path(str(fpath))

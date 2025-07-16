@@ -13,7 +13,8 @@ class DestinationPoolIndex:
         self.uid_path = uid_path
 
     def add_or_update_file(self, path: str, size: int, last_modified: int):
-        uid, rel_path = self.uid_path.convert_path(path)
+        uid_path_obj = self.uid_path.convert_path(path)
+        uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
         if not uid:
             return
         now = int(time.time())

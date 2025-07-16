@@ -17,7 +17,7 @@ from fs_copy_tool.db import init_db
 from fs_copy_tool.phases.analysis import analyze_volumes
 from fs_copy_tool.phases.copy import copy_files
 from fs_copy_tool.phases.verify import shallow_verify_files, deep_verify_files
-from fs_copy_tool.utils.uidpath import UidPath
+from fs_copy_tool.utils.uidpath import UidPathUtil, UidPath
 from fs_copy_tool.utils.checksum_cache import ChecksumCache
 from fs_copy_tool.utils.logging_config import setup_logging
 
@@ -36,13 +36,14 @@ def get_db_path_from_job_dir(job_dir):
 def add_file_to_db(db_path, file_path):
     from pathlib import Path
     import sys
-    from fs_copy_tool.utils.uidpath import UidPath
+    from fs_copy_tool.utils.uidpath import UidPathUtil
     file = Path(file_path)
     if not file.is_file():
         logging.error(f"Error: {file_path} is not a file.")
         sys.exit(1)
-    uid_path = UidPath()
-    uid, rel = uid_path.convert_path(str(file))
+    uid_path = UidPathUtil()
+    uid_path_obj = uid_path.convert_path(str(file))
+    uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
     if uid is None:
         logging.error(f"Error: Could not determine UID for {file_path}")
         sys.exit(1)
@@ -51,11 +52,12 @@ def add_file_to_db(db_path, file_path):
         with sqlite3.connect(db_path) as conn:
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO source_files (uid, relative_path, size, last_modified)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO source_files (uid, relative_path, size, last_modified, copy_status)
+                VALUES (?, ?, ?, ?, 'pending')
                 ON CONFLICT(uid, relative_path) DO UPDATE SET
                     size=excluded.size,
-                    last_modified=excluded.last_modified
+                    last_modified=excluded.last_modified,
+                    copy_status='pending'
             """, (uid, rel, stat.st_size, int(stat.st_mtime)))
             conn.commit()
         logging.info(f"Added file: {file_path}")
@@ -64,7 +66,7 @@ def add_file_to_db(db_path, file_path):
         sys.exit(1)
 
 def add_source_to_db(db_path, src_dir):
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     src = Path(src_dir)
     if not src.is_dir():
         logging.error(f"Error: {src_dir} is not a directory.")
@@ -79,7 +81,8 @@ def add_source_to_db(db_path, src_dir):
     def process_batch(batch):
         local_count = 0
         for file in batch:
-            uid, rel = uid_path.convert_path(str(file))
+            uid_path_obj = uid_path.convert_path(str(file))
+            uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
             if uid is None:
                 logging.error(f"Error: Could not determine UID for {file}")
                 continue
@@ -87,11 +90,12 @@ def add_source_to_db(db_path, src_dir):
             with sqlite3.connect(db_path) as conn:
                 cur = conn.cursor()
                 cur.execute("""
-                    INSERT INTO source_files (uid, relative_path, size, last_modified)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO source_files (uid, relative_path, size, last_modified, copy_status)
+                    VALUES (?, ?, ?, ?, 'pending')
                     ON CONFLICT(uid, relative_path) DO UPDATE SET
                         size=excluded.size,
-                        last_modified=excluded.last_modified
+                        last_modified=excluded.last_modified,
+                        copy_status='pending'
                 """, (uid, rel, stat.st_size, int(stat.st_mtime)))
                 conn.commit()
             local_count += 1
@@ -183,15 +187,13 @@ def parse_args(args=None):
     # Shallow verify command (basic attributes)
     parser_shallow_verify = subparsers.add_parser('verify', help='Shallow or deep verify: check existence, size, last_modified, or checksums')
     parser_shallow_verify.add_argument('--job-dir', required=True, help='Path to job directory')
-    parser_shallow_verify.add_argument('--src', nargs='+', help='Source volume root(s)')
-    parser_shallow_verify.add_argument('--dst', nargs='+', help='Destination volume root(s)')
     parser_shallow_verify.add_argument('--stage', choices=['shallow', 'deep'], default='shallow', help='Verification stage: shallow (default) or deep')
+    parser_shallow_verify.add_argument('--reverify', action='store_true', help='Force re-verification of all files, undoing any previous done status')
 
     # Deep verify command (checksums)
-    parser_deep_verify = subparsers.add_parser('deep-verify', help='Deep verify: compare checksums between source and destination')
+    parser_deep_verify = subparsers.add_parser('deep-verify', help='Deep verify: compare checksums between source and destination (always includes all shallow checks)')
     parser_deep_verify.add_argument('--job-dir', required=True, help='Path to job directory')
-    parser_deep_verify.add_argument('--src', nargs='+', help='Source volume root(s)')
-    parser_deep_verify.add_argument('--dst', nargs='+', help='Destination volume root(s)')
+    parser_deep_verify.add_argument('--reverify', action='store_true', help='Force re-verification of all files, undoing any previous done status')
 
     # Shallow verify status command
     parser_shallow_status = subparsers.add_parser('verify-status', help='Show a summary of the latest shallow verification results for each file')
@@ -266,7 +268,7 @@ def handle_copy(args):
     from fs_copy_tool.utils.checksum_cache import ChecksumCache
     from tqdm import tqdm
     import sqlite3
-    checksum_cache = ChecksumCache(db_path, UidPath())
+    checksum_cache = ChecksumCache(db_path, UidPathUtil())
     # Get all files in the destination pool
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
@@ -276,10 +278,11 @@ def handle_copy(args):
         from concurrent.futures import ThreadPoolExecutor
         from threading import Lock
         pbar_lock = Lock()
-        uid_path = UidPath()
+        uid_path = UidPathUtil()
         def process_pool_file(args):
             uid, rel_path = args
-            abs_path = uid_path.reconstruct_path(uid, rel_path)
+            uid_path_obj = UidPath(uid, rel_path)
+            abs_path = uid_path.reconstruct_path(uid_path_obj)
             if abs_path is None:
                 logging.warning(f"[COPY][POOL] Skipping file: could not reconstruct path for uid={uid}, rel_path={rel_path}")
                 return
@@ -295,41 +298,46 @@ def handle_copy(args):
 
 def handle_verify(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
+    # Remove src and dst, just use db_path and stage
     if args.stage == 'shallow':
-        shallow_verify_files(db_path, args.src, args.dst)
-        # Print only summary
+        shallow_verify_files(db_path, reverify=getattr(args, 'reverify', False))
         with sqlite3.connect(db_path) as conn:
             cur = conn.cursor()
             cur.execute('''
                 SELECT verify_status, COUNT(*) FROM verification_shallow_results
-                WHERE timestamp = (SELECT MAX(timestamp) FROM verification_shallow_results vs2 WHERE vs2.relative_path = verification_shallow_results.relative_path)
                 GROUP BY verify_status
             ''')
-            print("\nShallow Verification Summary:")
-            for status, count in cur.fetchall():
-                print(f"  {status}: {count}")
+            print("\n================ SHALLOW VERIFICATION SUMMARY ================")
+            results = cur.fetchall()
+            if results:
+                for status, count in results:
+                    print(f"  {status}: {count}")
+            else:
+                print("  No files verified.")
+            print("============================================================\n")
     else:
-        deep_verify_files(db_path, args.src, args.dst)
+        deep_verify_files(db_path, reverify=getattr(args, 'reverify', False))
         error_count = 0
         with sqlite3.connect(db_path) as conn:
             cur = conn.cursor()
             cur.execute('''
                 SELECT verify_status, COUNT(*) FROM verification_deep_results
-                WHERE timestamp = (SELECT MAX(timestamp) FROM verification_deep_results vd2 WHERE vd2.relative_path = verification_deep_results.relative_path)
                 GROUP BY verify_status
             ''')
-            print("\nDeep Verification Summary:")
+            print("\n================= DEEP VERIFICATION SUMMARY =================")
             status_counts = {status: count for status, count in cur.fetchall()}
-            for status, count in status_counts.items():
-                print(f"  {status}: {count}")
+            if status_counts:
+                for status, count in status_counts.items():
+                    print(f"  {status}: {count}")
+            else:
+                print("  No files verified.")
+            print("============================================================\n")
             error_count = status_counts.get('error', 0) + status_counts.get('failed', 0)
             if error_count:
                 print("\nErrors:")
                 cur.execute('''
                     SELECT relative_path, verify_error FROM verification_deep_results
-                    WHERE verify_status IN ('error', 'failed') AND timestamp = (
-                        SELECT MAX(timestamp) FROM verification_deep_results vd2 WHERE vd2.relative_path = verification_deep_results.relative_path
-                    )
+                    WHERE verify_status IN ('error', 'failed')
                     ORDER BY relative_path
                 ''')
                 for row in cur.fetchall():
@@ -354,7 +362,11 @@ def handle_status(args):
         pending = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM source_files WHERE copy_status='error'")
         error = cur.fetchone()[0]
-        logging.info(f"Done: {done}, Pending: {pending}, Error: {error}")
+        print("\n====================== JOB STATUS SUMMARY ======================")
+        print(f"  Done:    {done}")
+        print(f"  Pending: {pending}")
+        print(f"  Error:   {error}")
+        print("==============================================================\n")
     return 0
 
 def handle_log(args):
@@ -374,7 +386,7 @@ def handle_log(args):
 
 def handle_deep_verify(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
-    deep_verify_files(db_path, args.src, args.dst)
+    deep_verify_files(db_path, reverify=getattr(args, 'reverify', False))
     return 0
 
 def handle_verify_status(args):
@@ -430,7 +442,7 @@ def handle_remove_file(args):
 def handle_checksum(args):
     db_path = get_db_path_from_job_dir(args.job_dir)
     init_db(db_path)
-    uid_path = UidPath()
+    uid_path = UidPathUtil()
     checksum_cache = ChecksumCache(db_path, uid_path)
     import sqlite3
     with sqlite3.connect(db_path) as conn:
@@ -441,7 +453,8 @@ def handle_checksum(args):
     from concurrent.futures import ThreadPoolExecutor, as_completed
     def process_row(row):
         uid, rel_path, size, last_modified = row
-        file_path = uid_path.reconstruct_path(uid, rel_path)
+        uid_path_obj = UidPath(uid, rel_path)
+        file_path = uid_path.reconstruct_path(uid_path_obj)
         if not file_path or not file_path.exists():
             return None
         checksum = checksum_cache.get_or_compute_with_invalidation(str(file_path))

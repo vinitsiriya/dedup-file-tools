@@ -17,7 +17,8 @@ class ChecksumCache:
         """
         Get checksum from cache if file exists and size/mtime match; otherwise, recompute and update cache.
         """
-        uid, rel_path = self.uid_path.convert_path(path)
+        uid_path_obj = self.uid_path.convert_path(path)
+        uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
         if not uid:
             return None
         file_path = Path(path)
@@ -87,7 +88,8 @@ class ChecksumCache:
         self.uid_path = uid_path
 
     def get(self, path: str) -> Optional[str]:
-        uid, rel_path = self.uid_path.convert_path(path)
+        uid_path_obj = self.uid_path.convert_path(path)
+        uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
         if not uid:
             return None
         with sqlite3.connect(self.db_path) as conn:
@@ -111,7 +113,8 @@ class ChecksumCache:
             return cur.fetchone() is not None
 
     def insert_or_update(self, path: str, size: int, last_modified: int, checksum: str):
-        uid, rel_path = self.uid_path.convert_path(path)
+        uid_path_obj = self.uid_path.convert_path(path)
+        uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
         if not uid:
             return
         now = int(time.time())
@@ -136,7 +139,8 @@ class ChecksumCache:
         """
         Get checksum from cache, or compute, update, and return it if missing.
         """
-        uid, rel_path = self.uid_path.convert_path(path)
+        uid_path_obj = self.uid_path.convert_path(path)
+        uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
         if not uid:
             return None
         checksum = self.get(path)
@@ -161,7 +165,8 @@ class ChecksumCache:
             bool: True if the checksum exists at any of the given paths, False otherwise.
         """
         for path in paths:
-            uid, rel_path = self.uid_path.convert_path(path)
+            uid_path_obj = self.uid_path.convert_path(path)
+            uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
             if not uid:
                 continue
             with sqlite3.connect(self.db_path) as conn:
