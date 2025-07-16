@@ -273,10 +273,22 @@ def handle_copy(args):
         cur.execute("SELECT uid, relative_path FROM destination_pool_files")
         pool_files = cur.fetchall()
     if pool_files:
-        with tqdm(total=len(pool_files), desc="Updating pool checksums") as pbar:
-            for uid, rel_path in pool_files:
-                checksum_cache.get_or_compute_with_invalidation(UidPath().reconstruct_path(uid, rel_path))
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Lock
+        pbar_lock = Lock()
+        uid_path = UidPath()
+        def process_pool_file(args):
+            uid, rel_path = args
+            abs_path = uid_path.reconstruct_path(uid, rel_path)
+            if abs_path is None:
+                logging.warning(f"[COPY][POOL] Skipping file: could not reconstruct path for uid={uid}, rel_path={rel_path}")
+                return
+            checksum_cache.get_or_compute_with_invalidation(abs_path)
+            with pbar_lock:
                 pbar.update(1)
+        with tqdm(total=len(pool_files), desc="Updating pool checksums") as pbar:
+            with ThreadPoolExecutor() as executor:
+                list(executor.map(process_pool_file, pool_files))
     # Step 2: Always check both path and pool deduplication in copy_files
     copy_files(db_path, args.src, args.dst, threads=args.threads)
     return 0

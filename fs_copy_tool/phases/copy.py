@@ -29,22 +29,33 @@ def reset_status_for_missing_files(db_path, dst_roots):
             SELECT uid, relative_path, copy_status FROM source_files
         """)
         candidates = cur.fetchall()
-        for uid, rel_path, copy_status in candidates:
-            logging.debug(f"Checking file: uid={uid}, rel_path={rel_path}, copy_status={copy_status}")
-            logging.info(f"Checking file: uid={uid}, rel_path={rel_path}, copy_status={copy_status}")
-            sys.stderr.flush()
+        from tqdm import tqdm
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Lock
+        pbar_lock = Lock()
+        from threading import Lock
+        pbar_lock = Lock()
+        to_reset = []
+        def check_missing(args):
+            uid, rel_path, copy_status = args
             missing = True
             for dst_root in dst_roots:
                 dst_file = Path(dst_root) / rel_path
-                logging.info(f"  Checking dst_file={dst_file} exists={dst_file.exists()}")
-                sys.stderr.flush()
                 if dst_file.exists():
                     missing = False
                     break
             if copy_status == 'done' and missing:
-                logging.info(f"Resetting {rel_path} to pending (was done, now missing)")
-                sys.stderr.flush()
-                mark_copy_status(db_path, uid, rel_path, 'pending', 'Destination file missing, will retry')
+                to_reset.append((uid, rel_path))
+            with pbar_lock:
+                pbar.update(1)
+        with tqdm(total=len(candidates), desc="Checking destination files") as pbar:
+            with ThreadPoolExecutor() as executor:
+                list(executor.map(check_missing, candidates))
+        # Sequential DB update to avoid locking
+        for uid, rel_path in to_reset:
+            logging.info(f"Resetting {rel_path} to pending (was done, now missing)")
+            sys.stderr.flush()
+            mark_copy_status(db_path, uid, rel_path, 'pending', 'Destination file missing, will retry')
         conn.commit()  # Ensure all changes are flushed
     logging.info("reset_status_for_missing_files: completed")
     sys.stderr.flush()
@@ -117,7 +128,12 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
             logging.error(f"Source file not found: {src_file}")
             mark_copy_status(db_path, uid, rel_path, 'error', 'Source file not found for resume')
             return False
-        checksum = checksum_cache.get_or_compute_with_invalidation(str(src_file))
+        try:
+            checksum = checksum_cache.get_or_compute_with_invalidation(str(src_file))
+        except Exception as e:
+            logging.error(f"[AGENT][COPY] File access error for {rel_path}: {e}")
+            mark_copy_status(db_path, uid, rel_path, 'error', f"File access error: {e}")
+            return False
         logging.info(f"checksum for src_file: {checksum}")
         sys.stderr.flush()
         if not checksum:
@@ -175,5 +191,9 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
                 return False
     with ThreadPoolExecutor(max_workers=threads) as executor:
         futures = [executor.submit(process_copy, args) for args in pending]
-        for f in tqdm(as_completed(futures), total=len(futures), desc="Copying files"):
-            f.result()  # Wait for each job to finish and propagate exceptions
+        with tqdm(total=len(futures), desc="Copying files") as pbar:
+            for f in as_completed(futures):
+                try:
+                    f.result()
+                finally:
+                    pbar.update(1)
