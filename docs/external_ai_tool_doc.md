@@ -160,6 +160,9 @@ List all files currently in the job database.
 remove-file --job-dir <path> --file <file_path>
 Remove a file from the job database.
 
+summary --job-dir <path>
+Print a summary of the job, including what has happened, where the logs are, and generate a CSV report (summary_report.csv) of all files with errors or not done.
+
 Notes:
 
 All commands are run via Python (use the virtual environment if available):
@@ -181,6 +184,7 @@ python fs_copy_tool/main.py status --job-dir <job_dir>
 python fs_copy_tool/main.py verify --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
 python fs_copy_tool/main.py deep-verify --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
 python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --other-db <other_job_dir>/copytool.db
+python fs_copy_tool/main.py summary --job-dir <job_dir>
 ```
 
 ## Edge Cases & Robustness

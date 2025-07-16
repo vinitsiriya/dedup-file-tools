@@ -238,6 +238,10 @@ def parse_args(args=None):
     parser_remove_file.add_argument('--job-dir', required=True, help='Path to job directory')
     parser_remove_file.add_argument('--file', required=True, help='Path to the file to remove')
 
+    # Summary phase command
+    parser_summary = subparsers.add_parser('summary', help='Print summary and generate CSV report of errors and not-done files')
+    parser_summary.add_argument('--job-dir', required=True, help='Path to job directory')
+
     return parser.parse_args(args)
 
 def main(args=None):
@@ -247,6 +251,13 @@ def main(args=None):
     from fs_copy_tool.utils.logging_config import setup_logging
     setup_logging(job_dir)
     return run_main_command(parsed_args)
+
+
+def handle_summary(args):
+    from fs_copy_tool.phases.summary import summary_phase
+    db_path = get_db_path_from_job_dir(args.job_dir)
+    summary_phase(db_path, args.job_dir)
+    return 0
 
 def handle_init(args):
     init_job_dir(args.job_dir)
@@ -523,8 +534,11 @@ def run_main_command(args):
         return handle_add_source(args)
     elif args.command == 'list-files':
         return handle_list_files(args)
+
     elif args.command == 'remove-file':
         return handle_remove_file(args)
+    elif args.command == 'summary':
+        return handle_summary(args)
 
     logging.error("No command specified or unknown command.")
     return 1
