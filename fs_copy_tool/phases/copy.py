@@ -26,7 +26,7 @@ def reset_status_for_missing_files(db_path, dst_roots):
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT uid, relative_path, copy_status FROM source_files
+            SELECT uid, relative_path FROM source_files
         """)
         candidates = cur.fetchall()
         from tqdm import tqdm
@@ -37,13 +37,21 @@ def reset_status_for_missing_files(db_path, dst_roots):
         pbar_lock = Lock()
         to_reset = []
         def check_missing(args):
-            uid, rel_path, copy_status = args
+            uid, rel_path = args
             missing = True
             for dst_root in dst_roots:
                 dst_file = Path(dst_root) / rel_path
                 if dst_file.exists():
                     missing = False
                     break
+            # Query copy_status from new table
+            with sqlite3.connect(db_path) as conn2:
+                cur2 = conn2.cursor()
+                cur2.execute("""
+                    SELECT status FROM copy_status WHERE uid=? AND relative_path=?
+                """, (uid, rel_path))
+                row = cur2.fetchone()
+                copy_status = row[0] if row else None
             if copy_status == 'done' and missing:
                 to_reset.append((uid, rel_path))
             with pbar_lock:
@@ -56,7 +64,6 @@ def reset_status_for_missing_files(db_path, dst_roots):
             logging.info(f"Resetting {rel_path} to pending (was done, now missing)")
             sys.stderr.flush()
             mark_copy_status(db_path, uid, rel_path, 'pending', 'Destination file missing, will retry')
-        conn.commit()  # Ensure all changes are flushed
     logging.info("reset_status_for_missing_files: completed")
     sys.stderr.flush()
 
@@ -64,8 +71,10 @@ def get_pending_copies(db_path):
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT uid, relative_path, size, last_modified FROM source_files
-            WHERE (copy_status IS NULL OR copy_status='pending' OR copy_status='error' OR copy_status='in_progress')
+            SELECT s.uid, s.relative_path, s.size, s.last_modified
+            FROM source_files s
+            LEFT JOIN copy_status cs ON s.uid = cs.uid AND s.relative_path = cs.relative_path
+            WHERE (cs.status IS NULL OR cs.status='pending' OR cs.status='error' OR cs.status='in_progress')
         """)
         return cur.fetchall()
 
@@ -73,9 +82,13 @@ def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         cur.execute("""
-            UPDATE source_files SET copy_status=?, last_copy_attempt=strftime('%s','now'), error_message=?
-            WHERE uid=? AND relative_path=?
-        """, (status, error_message, uid, rel_path))
+            INSERT INTO copy_status (uid, relative_path, status, last_copy_attempt, error_message)
+            VALUES (?, ?, ?, strftime('%s','now'), ?)
+            ON CONFLICT(uid, relative_path) DO UPDATE SET
+                status=excluded.status,
+                last_copy_attempt=excluded.last_copy_attempt,
+                error_message=excluded.error_message
+        """, (uid, rel_path, status, error_message))
         conn.commit()
 
 def copy_files(db_path, src_roots, dst_roots, threads=4):
@@ -89,7 +102,14 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     logging.info(f"copy_files: db_path={db_path}, src_roots={src_roots}, dst_roots={dst_roots}")
     sys.stderr.flush()
     uid_path = UidPathUtil()
-    checksum_cache = ChecksumCache(db_path, uid_path)
+    from fs_copy_tool.main import get_checksum_db_path, connect_with_attached_checksum_db
+    import os
+    job_dir = os.path.dirname(db_path)
+    job_name = os.path.splitext(os.path.basename(db_path))[0]
+    checksum_db_path = get_checksum_db_path(job_dir)
+    def conn_factory():
+        return connect_with_attached_checksum_db(db_path, checksum_db_path)
+    checksum_cache = ChecksumCache(conn_factory, uid_path)
     src_roots = [str(Path(root).resolve()) for root in (src_roots or [])]
     reset_status_for_missing_files(db_path, dst_roots)
     time.sleep(0.1)
@@ -99,9 +119,12 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     checksums_on_disk = set()
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT uid, relative_path FROM destination_files WHERE copy_status='done'")
+        cur.execute("""
+            SELECT uid, relative_path FROM destination_files
+        """)
         for uid, rel_path in cur.fetchall():
-            abs_path = uid_path.reconstruct_path(uid, rel_path)
+            uid_path_obj = UidPath(uid, rel_path)
+            abs_path = uid_path.reconstruct_path(uid_path_obj)
             if abs_path:
                 chksum = checksum_cache.get(str(abs_path))
                 if chksum:
@@ -149,7 +172,7 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
             copied_checksums.add(checksum)
         # Check both pool-wide and path-specific deduplication: if checksum exists in either, skip copy
         pool_exists = exists_in_pool(checksum)
-        path_exists = checksum_cache.exists_at_destination(checksum)
+        path_exists = checksum_cache.exists_at_destination(uid, rel_path)
         if pool_exists or path_exists:
             mark_copy_status(db_path, uid, rel_path, 'done')
             logging.info(f"[AGENT][COPY] Skipped (deduplication: checksum already present in pool or at destination): {rel_path}")
@@ -173,12 +196,11 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
                 with sqlite3.connect(db_path) as conn:
                     cur = conn.cursor()
                     cur.execute("""
-                        INSERT INTO destination_files (uid, relative_path, size, last_modified, copy_status)
-                        VALUES (?, ?, ?, ?, 'done')
+                        INSERT INTO destination_files (uid, relative_path, size, last_modified)
+                        VALUES (?, ?, ?, ?)
                         ON CONFLICT(uid, relative_path) DO UPDATE SET
                             size=excluded.size,
-                            last_modified=excluded.last_modified,
-                            copy_status='done'
+                            last_modified=excluded.last_modified
                     """, (uid, rel_path, size, last_modified))
                     conn.commit()
                 mark_copy_status(db_path, uid, rel_path, 'done')

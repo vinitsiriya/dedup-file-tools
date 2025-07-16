@@ -27,7 +27,11 @@ def setup_test_db(tmp_path):
 def test_get_or_compute_with_invalidation_basic(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "file.txt"
     file_path.write_text("hello world")
     # First call should compute and cache
@@ -40,7 +44,11 @@ def test_get_or_compute_with_invalidation_basic(tmp_path):
 def test_get_or_compute_with_invalidation_file_changed(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "file.txt"
     file_path.write_text("first")
     checksum1 = cache.get_or_compute_with_invalidation(str(file_path))
@@ -56,7 +64,11 @@ def test_get_or_compute_with_invalidation_file_metadata_changed(tmp_path):
     import os
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "file.txt"
     file_path.write_text("meta test")
     checksum1 = cache.get_or_compute_with_invalidation(str(file_path))
@@ -70,6 +82,10 @@ def test_get_or_compute_with_invalidation_file_metadata_changed(tmp_path):
 def test_get_or_compute_with_invalidation_missing_file(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "missing.txt"
     assert cache.get_or_compute_with_invalidation(str(file_path)) is None

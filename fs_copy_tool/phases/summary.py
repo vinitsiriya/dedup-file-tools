@@ -18,11 +18,12 @@ def summary_phase(db_path, job_dir):
 
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
-    # Collect files with errors or not done
+    # Collect files with errors or not done from copy_status table
     cur.execute("""
-        SELECT uid, relative_path, copy_status, error_message
-        FROM source_files
-        WHERE copy_status != 'done'
+        SELECT s.uid, s.relative_path, cs.status as copy_status, cs.error_message
+        FROM source_files s
+        JOIN copy_status cs ON s.uid = cs.uid AND s.relative_path = cs.relative_path
+        WHERE cs.status != 'done'
     """)
     rows = cur.fetchall()
     if not rows:

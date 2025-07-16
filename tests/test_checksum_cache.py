@@ -30,7 +30,11 @@ def setup_test_db(tmp_path):
 def test_insert_and_get(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     # Create a temp file
     file_path = tmp_path / "file1.txt"
     file_path.write_text("hello world")
@@ -43,7 +47,11 @@ def test_insert_and_get(tmp_path):
 def test_get_or_compute(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "file2.txt"
     file_path.write_text("abc123")
     # Should compute and cache
@@ -56,7 +64,11 @@ def test_get_or_compute(tmp_path):
 def test_exists(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "file3.txt"
     file_path.write_text("testdata")
     stat = file_path.stat()
@@ -68,7 +80,11 @@ def test_exists(tmp_path):
 def test_get_missing(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "missing.txt"
     # File does not exist in cache
     assert cache.get(str(file_path)) is None
@@ -76,7 +92,11 @@ def test_get_missing(tmp_path):
 def test_get_or_compute_missing_file(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "doesnotexist.txt"
     # File does not exist on disk
     assert cache.get_or_compute(str(file_path)) is None

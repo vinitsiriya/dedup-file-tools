@@ -39,7 +39,11 @@ def setup_test_db_with_pool(tmp_path):
 def test_exists_at_destination_pool(tmp_path):
     db_path = setup_test_db_with_pool(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     # Create a temp file and add to both tables
     file_path = tmp_path / "file1.txt"
     file_path.write_text("hello world")
@@ -80,7 +84,11 @@ def setup_test_db(tmp_path):
 def test_update_existing_entry(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "file_update.txt"
     file_path.write_text("first")
     stat = file_path.stat()
@@ -94,7 +102,11 @@ def test_update_existing_entry(tmp_path):
 def test_multiple_files_and_uids(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file1 = tmp_path / "file1.txt"
     file2 = tmp_path / "file2.txt"
     file1.write_text("a")
@@ -109,7 +121,11 @@ def test_multiple_files_and_uids(tmp_path):
 def test_invalid_entries_are_ignored(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     file_path = tmp_path / "file_invalid.txt"
     file_path.write_text("data")
     stat = file_path.stat()
@@ -125,7 +141,11 @@ def test_invalid_entries_are_ignored(tmp_path):
 def test_subdirectory_file(tmp_path):
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        conn = sqlite3.connect(db_path)
+        conn.execute(f"ATTACH DATABASE '{db_path}' AS checksumdb")
+        return conn
+    cache = ChecksumCache(conn_factory, uid_path)
     subdir = tmp_path / "sub1" / "sub2"
     subdir.mkdir(parents=True)
     file_path = subdir / "deep.txt"

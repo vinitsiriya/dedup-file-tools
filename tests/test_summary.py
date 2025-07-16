@@ -15,15 +15,27 @@ def setup_db_with_files(statuses):
             relative_path TEXT,
             size INTEGER,
             last_modified INTEGER,
-            copy_status TEXT,
+            PRIMARY KEY (uid, relative_path)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE copy_status (
+            uid TEXT,
+            relative_path TEXT,
+            status TEXT,
+            last_copy_attempt INTEGER,
             error_message TEXT,
             PRIMARY KEY (uid, relative_path)
         )
     """)
     for i, (status, error) in enumerate(statuses):
         cur.execute(
-            "INSERT INTO source_files (uid, relative_path, size, last_modified, copy_status, error_message) VALUES (?, ?, ?, ?, ?, ?)",
-            (f"uid{i}", f"file{i}.dat", 100, 1234567890, status, error)
+            "INSERT INTO source_files (uid, relative_path, size, last_modified) VALUES (?, ?, ?, ?)",
+            (f"uid{i}", f"file{i}.dat", 100, 1234567890)
+        )
+        cur.execute(
+            "INSERT INTO copy_status (uid, relative_path, status, last_copy_attempt, error_message) VALUES (?, ?, ?, 0, ?)",
+            (f"uid{i}", f"file{i}.dat", status, error)
         )
     conn.commit()
     conn.close()

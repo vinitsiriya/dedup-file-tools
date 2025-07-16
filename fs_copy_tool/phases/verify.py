@@ -26,13 +26,24 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
     uid_path.update_mounts()  # Ensure mounts are up to date for test environments
     logging.info("Starting shallow verification stage...")
     timestamp = int(time.time())
+    from fs_copy_tool.main import get_checksum_db_path, connect_with_attached_checksum_db
+    import os
+    job_dir = os.path.dirname(db_path)
+    checksum_db_path = get_checksum_db_path(job_dir)
+    def conn_factory():
+        return connect_with_attached_checksum_db(db_path, checksum_db_path)
     if reverify:
         with sqlite3.connect(db_path) as conn:
             conn.execute("DELETE FROM verification_shallow_results")
             conn.commit()
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT uid, relative_path, size, last_modified FROM source_files WHERE copy_status='done'")
+        cur.execute("""
+            SELECT s.uid, s.relative_path, s.size, s.last_modified
+            FROM source_files s
+            JOIN copy_status cs ON s.uid = cs.uid AND s.relative_path = cs.relative_path
+            WHERE cs.status='done'
+        """)
         files = cur.fetchall()
     if not files:
         print("[INFO] No files found in source_files with copy_status='done'. Nothing to verify.")
@@ -91,14 +102,25 @@ def deep_verify_files(db_path, reverify=False, max_workers=8):
     uid_path.update_mounts()  # Ensure mounts are up to date for test environments
     logging.info("Starting deep verification stage...")
     timestamp = int(time.time())
-    checksum_cache = ChecksumCache(db_path, uid_path)
+    from fs_copy_tool.main import get_checksum_db_path, connect_with_attached_checksum_db
+    import os
+    job_dir = os.path.dirname(db_path)
+    checksum_db_path = get_checksum_db_path(job_dir)
+    def conn_factory():
+        return connect_with_attached_checksum_db(db_path, checksum_db_path)
+    checksum_cache = ChecksumCache(conn_factory, uid_path)
     if reverify:
         with sqlite3.connect(db_path) as conn:
             conn.execute("DELETE FROM verification_deep_results")
             conn.commit()
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT uid, relative_path, size, last_modified FROM source_files WHERE copy_status='done'")
+        cur.execute("""
+            SELECT s.uid, s.relative_path, s.size, s.last_modified
+            FROM source_files s
+            JOIN copy_status cs ON s.uid = cs.uid AND s.relative_path = cs.relative_path
+            WHERE cs.status='done'
+        """)
         files = cur.fetchall()
     if not files:
         print("[INFO] No files found in source_files with copy_status='done'. Nothing to verify.")

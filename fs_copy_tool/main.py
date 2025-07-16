@@ -1,6 +1,6 @@
 def handle_add_to_destination_index_pool(args):
     from fs_copy_tool.utils.destination_pool_cli import add_to_destination_index_pool
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     add_to_destination_index_pool(db_path, args.dst)
     return 0
 """
@@ -21,17 +21,32 @@ from fs_copy_tool.utils.uidpath import UidPathUtil, UidPath
 from fs_copy_tool.utils.checksum_cache import ChecksumCache
 from fs_copy_tool.utils.logging_config import setup_logging
 
-def init_job_dir(job_dir):
+def init_job_dir(job_dir, job_name, checksum_db=None):
+    from fs_copy_tool.db import init_db, init_checksum_db
     os.makedirs(job_dir, exist_ok=True)
-    db_path = os.path.join(job_dir, 'copytool.db')
+    db_path = os.path.join(job_dir, f'{job_name}.db')
+    checksum_db_path = checksum_db or os.path.join(job_dir, 'checksum-cache.db')
     init_db(db_path)
-    # Optionally create log, planning, and state files here
-    # ...
-    logging.info(f"Initialized job directory at {job_dir} with database {db_path}")
+    if not os.path.exists(checksum_db_path):
+        init_checksum_db(checksum_db_path)
+    logging.info(f"Initialized job directory at {job_dir} with database {db_path} and checksum DB {checksum_db_path}")
+
+def get_db_path_from_job_dir(job_dir, job_name):
+    return os.path.join(job_dir, f'{job_name}.db')
+
+def get_checksum_db_path(job_dir, checksum_db=None):
+    if checksum_db:
+        return checksum_db
+    return os.path.join(job_dir, 'checksum-cache.db')
+
+# Centralized DB connection with attached checksum DB
+def connect_with_attached_checksum_db(main_db_path, checksum_db_path):
+    conn = sqlite3.connect(main_db_path)
+    # Attach checksum DB as 'checksumdb'
+    conn.execute(f"ATTACH DATABASE '{checksum_db_path}' AS checksumdb")
+    return conn
 
 
-def get_db_path_from_job_dir(job_dir):
-    return os.path.join(job_dir, 'copytool.db')
 
 def add_file_to_db(db_path, file_path):
     from pathlib import Path
@@ -52,13 +67,18 @@ def add_file_to_db(db_path, file_path):
         with sqlite3.connect(db_path) as conn:
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO source_files (uid, relative_path, size, last_modified, copy_status)
-                VALUES (?, ?, ?, ?, 'pending')
+                INSERT INTO source_files (uid, relative_path, size, last_modified)
+                VALUES (?, ?, ?, ?)
                 ON CONFLICT(uid, relative_path) DO UPDATE SET
                     size=excluded.size,
-                    last_modified=excluded.last_modified,
-                    copy_status='pending'
+                    last_modified=excluded.last_modified
             """, (uid, rel, stat.st_size, int(stat.st_mtime)))
+            cur.execute("""
+                INSERT INTO copy_status (uid, relative_path, status)
+                VALUES (?, ?, 'pending')
+                ON CONFLICT(uid, relative_path) DO UPDATE SET
+                    status='pending'
+            """, (uid, rel))
             conn.commit()
         logging.info(f"Added file: {file_path}")
     except Exception as e:
@@ -90,13 +110,18 @@ def add_source_to_db(db_path, src_dir):
             with sqlite3.connect(db_path) as conn:
                 cur = conn.cursor()
                 cur.execute("""
-                    INSERT INTO source_files (uid, relative_path, size, last_modified, copy_status)
-                    VALUES (?, ?, ?, ?, 'pending')
+                    INSERT INTO source_files (uid, relative_path, size, last_modified)
+                    VALUES (?, ?, ?, ?)
                     ON CONFLICT(uid, relative_path) DO UPDATE SET
                         size=excluded.size,
-                        last_modified=excluded.last_modified,
-                        copy_status='pending'
+                        last_modified=excluded.last_modified
                 """, (uid, rel, stat.st_size, int(stat.st_mtime)))
+                cur.execute("""
+                    INSERT INTO copy_status (uid, relative_path, status)
+                    VALUES (?, ?, 'pending')
+                    ON CONFLICT(uid, relative_path) DO UPDATE SET
+                        status='pending'
+                """, (uid, rel))
                 conn.commit()
             local_count += 1
             with pbar_lock:
@@ -137,31 +162,37 @@ def parse_args(args=None):
     # Add to destination index pool command (must be after subparsers is defined)
     parser_add_pool = subparsers.add_parser('add-to-destination-index-pool', help='Scan and add/update all files in the destination pool index')
     parser_add_pool.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_add_pool.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_add_pool.add_argument('--dst', required=True, help='Destination root directory to scan')
 
     # Init command
     parser_init = subparsers.add_parser('init', help='Initialize a new job directory')
     parser_init.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_init.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Import checksums command (simplified, only from checksum_cache)
     parser_import = subparsers.add_parser('import-checksums', help='Import checksums from the checksum_cache table of another compatible database')
     parser_import.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_import.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_import.add_argument('--other-db', required=True, help='Path to other compatible SQLite database (must have checksum_cache table)')
 
     # Analyze, checksum, copy, etc. commands
     parser_analyze = subparsers.add_parser('analyze', help='Analyze source/destination volumes')
     parser_analyze.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_analyze.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_analyze.add_argument('--src', nargs='+', help='Source volume root(s)')
     parser_analyze.add_argument('--dst', nargs='+', help='Destination volume root(s)')
 
     parser_checksum = subparsers.add_parser('checksum', help='Update checksums for files')
     parser_checksum.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_checksum.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_checksum.add_argument('--table', choices=['source_files', 'destination_files'], required=True)
     parser_checksum.add_argument('--threads', type=int, default=4, help='Number of threads for checksum phase (default: 4)')
     parser_checksum.add_argument('--no-progress', action='store_true', help='Disable progress bar')
 
     parser_copy = subparsers.add_parser('copy', help='Copy files from source to destination. Skips already completed files and resumes incomplete jobs by default.')
     parser_copy.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_copy.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_copy.add_argument('--src', nargs='+', help='Source volume root(s)')
     parser_copy.add_argument('--dst', nargs='+', help='Destination volume root(s)')
     parser_copy.add_argument('--threads', type=int, default=4, help='Number of threads for copy phase (default: 4)')
@@ -171,6 +202,7 @@ def parse_args(args=None):
     # Resume command
     parser_resume = subparsers.add_parser('resume', help='Alias for copy: resumes incomplete or failed operations (skips completed files).')
     parser_resume.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_resume.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_resume.add_argument('--src', nargs='+', help='Source volume root(s)')
     parser_resume.add_argument('--dst', nargs='+', help='Destination volume root(s)')
     parser_resume.add_argument('--threads', type=int, default=4, help='Number of threads for copy phase (default: 4)')
@@ -179,68 +211,83 @@ def parse_args(args=None):
     # Status command
     parser_status = subparsers.add_parser('status', help='Show job progress and statistics')
     parser_status.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_status.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Log/Audit command
     parser_log = subparsers.add_parser('log', help='Show job log or audit trail')
     parser_log.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_log.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Shallow verify command (basic attributes)
     parser_shallow_verify = subparsers.add_parser('verify', help='Shallow or deep verify: check existence, size, last_modified, or checksums')
     parser_shallow_verify.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_shallow_verify.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_shallow_verify.add_argument('--stage', choices=['shallow', 'deep'], default='shallow', help='Verification stage: shallow (default) or deep')
     parser_shallow_verify.add_argument('--reverify', action='store_true', help='Force re-verification of all files, undoing any previous done status')
 
     # Deep verify command (checksums)
     parser_deep_verify = subparsers.add_parser('deep-verify', help='Deep verify: compare checksums between source and destination (always includes all shallow checks)')
     parser_deep_verify.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_deep_verify.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_deep_verify.add_argument('--reverify', action='store_true', help='Force re-verification of all files, undoing any previous done status')
 
     # Shallow verify status command
     parser_shallow_status = subparsers.add_parser('verify-status', help='Show a summary of the latest shallow verification results for each file')
     parser_shallow_status.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_shallow_status.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Deep verify status command
     parser_deep_status = subparsers.add_parser('deep-verify-status', help='Show a summary of the latest deep verification results for each file')
     parser_deep_status.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_deep_status.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Shallow verify status summary (short)
     parser_shallow_status_summary = subparsers.add_parser('verify-status-summary', help='Show a summary (short) of the latest shallow verification results for each file')
     parser_shallow_status_summary.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_shallow_status_summary.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Shallow verify status full (detailed)
     parser_shallow_status_full = subparsers.add_parser('verify-status-full', help='Show all shallow verification results (full history)')
     parser_shallow_status_full.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_shallow_status_full.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Deep verify status summary (short)
     parser_deep_status_summary = subparsers.add_parser('deep-verify-status-summary', help='Show a summary (short) of the latest deep verification results for each file')
     parser_deep_status_summary.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_deep_status_summary.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Deep verify status full (detailed)
     parser_deep_status_full = subparsers.add_parser('deep-verify-status-full', help='Show all deep verification results (full history)')
     parser_deep_status_full.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_deep_status_full.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Add file command
     parser_add_file = subparsers.add_parser('add-file', help='Add a single file to the job state/database')
     parser_add_file.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_add_file.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_add_file.add_argument('--file', required=True, help='Path to the file to add')
 
     # Add source command (recursive add)
     parser_add_source = subparsers.add_parser('add-source', help='Recursively add all files from a directory to the job state/database')
     parser_add_source.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_add_source.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_add_source.add_argument('--src', required=True, help='Source directory to add')
 
     # List files command
     parser_list_files = subparsers.add_parser('list-files', help='List all files currently in the job state/database')
     parser_list_files.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_list_files.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     # Remove file command
     parser_remove_file = subparsers.add_parser('remove-file', help='Remove a file from the job state/database')
     parser_remove_file.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_remove_file.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_remove_file.add_argument('--file', required=True, help='Path to the file to remove')
 
     # Summary phase command
     parser_summary = subparsers.add_parser('summary', help='Print summary and generate CSV report of errors and not-done files')
     parser_summary.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_summary.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
     return parser.parse_args(args)
 
@@ -255,16 +302,16 @@ def main(args=None):
 
 def handle_summary(args):
     from fs_copy_tool.phases.summary import summary_phase
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     summary_phase(db_path, args.job_dir)
     return 0
 
 def handle_init(args):
-    init_job_dir(args.job_dir)
+    init_job_dir(args.job_dir, args.job_name, getattr(args, 'checksum_db', None))
     return 0
 
 def handle_analyze(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     init_db(db_path)
     if args.src:
         analyze_volumes(db_path, args.src, 'source_files')
@@ -273,15 +320,17 @@ def handle_analyze(args):
     return 0
 
 def handle_copy(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
+    checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     init_db(db_path)
-    # Step 1: Update and validate destination pool checksums with progress bar
     from fs_copy_tool.utils.checksum_cache import ChecksumCache
     from tqdm import tqdm
     import sqlite3
-    checksum_cache = ChecksumCache(db_path, UidPathUtil())
+    def conn_factory():
+        return connect_with_attached_checksum_db(db_path, checksum_db_path)
+    checksum_cache = ChecksumCache(conn_factory, UidPathUtil())
     # Get all files in the destination pool
-    with sqlite3.connect(db_path) as conn:
+    with conn_factory() as conn:
         cur = conn.cursor()
         cur.execute("SELECT uid, relative_path FROM destination_pool_files")
         pool_files = cur.fetchall()
@@ -308,7 +357,7 @@ def handle_copy(args):
     return 0
 
 def handle_verify(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     # Remove src and dst, just use db_path and stage
     if args.stage == 'shallow':
         shallow_verify_files(db_path, reverify=getattr(args, 'reverify', False))
@@ -358,20 +407,20 @@ def handle_verify(args):
     return 0
 
 def handle_resume(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     init_db(db_path)
     copy_files(db_path, args.src, args.dst)
     return 0
 
 def handle_status(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM source_files WHERE copy_status='done'")
+        cur.execute("SELECT COUNT(*) FROM copy_status WHERE status='done'")
         done = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM source_files WHERE copy_status='pending' OR copy_status IS NULL")
+        cur.execute("SELECT COUNT(*) FROM copy_status WHERE status='pending' OR status IS NULL")
         pending = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM source_files WHERE copy_status='error'")
+        cur.execute("SELECT COUNT(*) FROM copy_status WHERE status='error'")
         error = cur.fetchone()[0]
         print("\n====================== JOB STATUS SUMMARY ======================")
         print(f"  Done:    {done}")
@@ -381,27 +430,36 @@ def handle_status(args):
     return 0
 
 def handle_log(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         logging.info('Copied files (destination_files):')
-        cur.execute("SELECT uid, relative_path, size, last_modified, copy_status FROM destination_files WHERE copy_status='done'")
+        cur.execute("""
+            SELECT d.uid, d.relative_path, d.size, d.last_modified, s.status
+            FROM destination_files d
+            JOIN copy_status s ON d.uid = s.uid AND d.relative_path = s.relative_path
+            WHERE s.status='done'
+        """)
         for row in cur.fetchall():
             logging.info(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]} | status: {row[4]}")
         logging.info('---')
         logging.info('Errors (source_files):')
-        cur.execute("SELECT uid, relative_path, copy_status, error_message FROM source_files WHERE copy_status='error'")
+        cur.execute("""
+            SELECT s.uid, s.relative_path, s.status, s.error_message
+            FROM copy_status s
+            WHERE s.status='error'
+        """)
         for row in cur.fetchall():
             logging.warning(f"{row[0]} | {row[1]} | status: {row[2]} | error: {row[3]}")
     return 0
 
 def handle_deep_verify(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     deep_verify_files(db_path, reverify=getattr(args, 'reverify', False))
     return 0
 
 def handle_verify_status(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         logging.info('Shallow Verification Results:')
@@ -416,7 +474,7 @@ def handle_verify_status(args):
     return 0
 
 def handle_deep_verify_status(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         logging.info('Deep Verification Results:')
@@ -431,30 +489,33 @@ def handle_deep_verify_status(args):
     return 0
 
 def handle_add_file(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     add_file_to_db(db_path, args.file)
     return 0
 
 def handle_add_source(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     add_source_to_db(db_path, args.src)
     return 0
 
 def handle_list_files(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     list_files_in_db(db_path)
     return 0
 
 def handle_remove_file(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     remove_file_from_db(db_path, args.file)
     return 0
 
 def handle_checksum(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
+    checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     init_db(db_path)
     uid_path = UidPathUtil()
-    checksum_cache = ChecksumCache(db_path, uid_path)
+    def conn_factory():
+        return connect_with_attached_checksum_db(db_path, checksum_db_path)
+    checksum_cache = ChecksumCache(conn_factory, uid_path)
     import sqlite3
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
@@ -478,7 +539,8 @@ def handle_checksum(args):
     return 0
 
 def handle_import_checksums(args):
-    db_path = get_db_path_from_job_dir(args.job_dir)
+    db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
+    checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     other_db_path = args.other_db
     # Validate schema of other_db
     with sqlite3.connect(other_db_path) as conn:
@@ -490,14 +552,18 @@ def handle_import_checksums(args):
         # Import all rows from other checksum_cache
         cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
         rows = cur.fetchall()
-    with sqlite3.connect(db_path) as conn:
+    # Insert into attached checksum DB
+    conn = connect_with_attached_checksum_db(db_path, checksum_db_path)
+    try:
         cur = conn.cursor()
         for row in rows:
             cur.execute("""
-                INSERT OR REPLACE INTO checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid)
+                INSERT OR REPLACE INTO checksumdb.checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, row)
         conn.commit()
+    finally:
+        conn.close()
     logging.info(f"Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
     return 0
 
