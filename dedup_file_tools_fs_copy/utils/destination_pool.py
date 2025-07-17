@@ -1,4 +1,4 @@
-from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
 from typing import Optional
 import time
 

@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
-from fs_copy_tool import main
-from fs_copy_tool.utils.uidpath import UidPathUtil
+from dedup_file_tools_fs_copy import main
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
 import pytest
 
 def test_e2e_import_checksums(tmp_path):

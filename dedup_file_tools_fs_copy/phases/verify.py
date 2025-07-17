@@ -11,12 +11,12 @@ def verify_files(db_path, stage='shallow', reverify=False):
     else:
         deep_verify_files(db_path, reverify=reverify)
 import logging
-from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
 import time
 from pathlib import Path
-from fs_copy_tool.utils.fileops import compute_sha256
-from fs_copy_tool.utils.checksum_cache import ChecksumCache
-from fs_copy_tool.utils.uidpath import UidPath, UidPathUtil
+from dedup_file_tools_fs_copy.utils.fileops import compute_sha256
+from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_fs_copy.utils.uidpath import UidPath, UidPathUtil
 from tqdm import tqdm
 
 def shallow_verify_files(db_path, reverify=False, max_workers=8):
@@ -26,7 +26,7 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
     uid_path.update_mounts()  # Ensure mounts are up to date for test environments
     logging.info("Starting shallow verification stage...")
     timestamp = int(time.time())
-    from fs_copy_tool.main import get_checksum_db_path, connect_with_attached_checksum_db
+    from dedup_file_tools_fs_copy.main import get_checksum_db_path, connect_with_attached_checksum_db
     import os
     job_dir = os.path.dirname(db_path)
     checksum_db_path = get_checksum_db_path(job_dir)
@@ -102,7 +102,7 @@ def deep_verify_files(db_path, reverify=False, max_workers=8):
     uid_path.update_mounts()  # Ensure mounts are up to date for test environments
     logging.info("Starting deep verification stage...")
     timestamp = int(time.time())
-    from fs_copy_tool.main import get_checksum_db_path, connect_with_attached_checksum_db
+    from dedup_file_tools_fs_copy.main import get_checksum_db_path, connect_with_attached_checksum_db
     import os
     job_dir = os.path.dirname(db_path)
     checksum_db_path = get_checksum_db_path(job_dir)

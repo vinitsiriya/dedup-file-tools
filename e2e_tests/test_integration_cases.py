@@ -21,11 +21,11 @@ def test_deduplication(tmp_path):
         shutil.copy(src / fname, dst / fname)
     # Run workflow
     python = str(Path(".venv/Scripts/python.exe")) if Path(".venv/Scripts/python.exe").exists() else "python"
-    subprocess.run([python, "fs_copy_tool/main.py", "init", "--job-dir", str(job)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "destination_files"], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "init", "--job-dir", str(job)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "destination_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
     # Assert: files should not be changed (no overwrite)
     for fname in ["file1.txt", "file2.txt"]:
         assert (dst / fname).read_text() == f"This is {fname}"
@@ -49,11 +49,11 @@ def test_nested_directories(tmp_path):
     (src / "file3.txt").write_text("root file")
     # Run workflow
     python = str(Path(".venv/Scripts/python.exe")) if Path(".venv/Scripts/python.exe").exists() else "python"
-    subprocess.run([python, "fs_copy_tool/main.py", "init", "--job-dir", str(job)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "destination_files"], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "init", "--job-dir", str(job)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "destination_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
     # Assert: files are copied to dst/<full_source_path>
     assert (dst / str(src / "a" / "b" / "file1.txt")).read_text() == "nested file 1"
     assert (dst / str(src / "a" / "file2.txt")).read_text() == "nested file 2"

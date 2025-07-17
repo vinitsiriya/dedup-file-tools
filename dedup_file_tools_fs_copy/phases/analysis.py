@@ -3,9 +3,9 @@ File: fs-copy-tool/phases/analysis.py
 Description: Analysis phase logic (scanning and metadata extraction)
 """
 import logging
-from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
-from fs_copy_tool.utils.uidpath import UidPathUtil
-from fs_copy_tool.utils.fileops import compute_sha256
+from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+from dedup_file_tools_fs_copy.utils.fileops import compute_sha256
 from pathlib import Path
 import os
 from tqdm import tqdm

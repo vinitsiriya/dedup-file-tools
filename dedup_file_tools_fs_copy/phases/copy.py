@@ -3,11 +3,11 @@ File: fs-copy-tool/phases/copy.py
 Description: Copy phase logic for Non-Redundant Media File Copy Tool
 """
 import logging
-from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
 from pathlib import Path
-from fs_copy_tool.utils.fileops import copy_file, verify_file
-from fs_copy_tool.utils.checksum_cache import ChecksumCache
-from fs_copy_tool.utils.uidpath import UidPathUtil, UidPath
+from dedup_file_tools_fs_copy.utils.fileops import copy_file, verify_file
+from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil, UidPath
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
@@ -102,7 +102,7 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     logging.info(f"copy_files: db_path={db_path}, src_roots={src_roots}, dst_roots={dst_roots}")
     sys.stderr.flush()
     uid_path = UidPathUtil()
-    from fs_copy_tool.main import get_checksum_db_path, connect_with_attached_checksum_db
+    from dedup_file_tools_fs_copy.main import get_checksum_db_path, connect_with_attached_checksum_db
     import os
     job_dir = os.path.dirname(db_path)
     job_name = os.path.splitext(os.path.basename(db_path))[0]

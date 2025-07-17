@@ -1,6 +1,6 @@
 import sqlite3
 from pathlib import Path
-from fs_copy_tool.main import handle_init, handle_add_source, handle_resume, get_db_path_from_job_dir
+from dedup_file_tools_fs_copy.main import handle_init, handle_add_source, handle_resume, get_db_path_from_job_dir
 
 def test_handle_resume_integration(tmp_path):
     # Setup: create job dir, src, dst
@@ -54,7 +54,7 @@ def test_handle_resume_integration(tmp_path):
     assert (dst / str(src / "fileC.txt")).read_text() == "C"
 
 def test_handle_resume_corrupted_and_missing(tmp_path):
-    from fs_copy_tool.main import handle_init, handle_add_source, handle_resume, get_db_path_from_job_dir
+    from dedup_file_tools_fs_copy.main import handle_init, handle_add_source, handle_resume, get_db_path_from_job_dir
     import sqlite3
 
     job_dir = tmp_path / "job2"

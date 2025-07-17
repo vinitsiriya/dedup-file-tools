@@ -1,6 +1,6 @@
 import tempfile
 from pathlib import Path
-from fs_copy_tool.utils.fileops import copy_file, verify_file
+from dedup_file_tools_fs_copy.utils.fileops import copy_file, verify_file
 
 def test_copy_file(tmp_path):
     src = tmp_path / "source.txt"

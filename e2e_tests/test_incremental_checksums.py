@@ -22,16 +22,16 @@ def test_incremental_checksums(tmp_path):
     (src / "fileA.txt").write_text("A1")
     (src / "fileB.txt").write_text("B1")
     python = str(Path(".venv/Scripts/python.exe")) if Path(".venv/Scripts/python.exe").exists() else "python"
-    subprocess.run([python, "fs_copy_tool/main.py", "init", "--job-dir", str(job)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "init", "--job-dir", str(job)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
     # Step 2: Add fileC, modify fileA, delete fileB
     (src / "fileA.txt").write_text("A2")  # modify
     (src / "fileC.txt").write_text("C1")  # new
     (src / "fileB.txt").unlink()          # delete
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
     # Step 3: Run copy
-    subprocess.run([python, "fs_copy_tool/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
     # Step 4: Assert only on file system, not DB
     assert (dst / str(src / "fileA.txt")).read_text() == "A2"
     assert (dst / str(src / "fileC.txt")).read_text() == "C1"

@@ -7,7 +7,7 @@ import sqlite3
 import tempfile
 import pytest
 from pathlib import Path
-from fs_copy_tool.utils.uidpath import UidPathUtil, UidPath
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil, UidPath
 
 def test_convert_and_reconstruct(tmp_path):
     uid_path = UidPathUtil()

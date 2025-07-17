@@ -17,7 +17,7 @@ CREATE INDEX IF NOT EXISTS checksumdb.idx_checksum_cache_checksum_valid ON check
 """
 db.py: SQLite schema management for Non-Redundant Media File Copy Tool
 """
-from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
 
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS source_files (

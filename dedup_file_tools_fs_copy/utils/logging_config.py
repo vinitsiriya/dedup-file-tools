@@ -5,7 +5,7 @@ import datetime
 def setup_logging(job_dir=None, log_level=None):
     """
     Set up logging to a timestamped log file in the job_dir/logs directory.
-    If job_dir is None, use 'changes/fs_copy_tool.log'.
+    If job_dir is None, use 'changes/dedup_file_tools_fs_copy.log'.
     log_level can be passed as a string (e.g., 'INFO', 'DEBUG').
     If not provided, will use LOG_LEVEL environment variable, or default to 'INFO'.
     """
@@ -20,7 +20,7 @@ def setup_logging(job_dir=None, log_level=None):
         timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         log_file = os.path.join(logs_dir, f'fs_copy_tool_{timestamp}.log')
     else:
-        log_file = 'changes/fs_copy_tool.log'
+        log_file = 'changes/dedup_file_tools_fs_copy.log'
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)

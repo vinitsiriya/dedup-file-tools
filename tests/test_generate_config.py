@@ -3,7 +3,7 @@ import os
 import tempfile
 import builtins
 import pytest
-from fs_copy_tool.main import main
+from dedup_file_tools_fs_copy.main import main
 
 def test_generate_config_interactive(monkeypatch):
     # Simulate user input for all prompts

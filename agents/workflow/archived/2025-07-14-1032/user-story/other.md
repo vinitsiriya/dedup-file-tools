@@ -15,7 +15,7 @@
 
 - Example CLI usage:
   ```sh
-  python -m fs_copy_tool.main import-checksums --job-dir .copy-task --old-db old.db --cache
+  python -m dedup_file_tools_fs_copy.main import-checksums --job-dir .copy-task --old-db old.db --cache
   ```
 
 - Example migration script snippet:

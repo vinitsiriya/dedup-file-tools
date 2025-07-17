@@ -3,7 +3,7 @@ import shutil
 import sqlite3
 from pathlib import Path
 import pytest
-from fs_copy_tool import main
+from dedup_file_tools_fs_copy import main
 
 def test_cli_workflow_verify_deep(tmp_path):
 

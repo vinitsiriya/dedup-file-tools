@@ -1,5 +1,5 @@
 def handle_add_to_destination_index_pool(args):
-    from fs_copy_tool.utils.destination_pool_cli import add_to_destination_index_pool
+    from dedup_file_tools_fs_copy.utils.destination_pool_cli import add_to_destination_index_pool
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     add_to_destination_index_pool(db_path, args.dst)
     return 0
@@ -9,7 +9,7 @@ Description: Main orchestration script for Non-Redundant Media File Copy Tool
 """
 
 import argparse
-from fs_copy_tool.utils.config_loader import load_yaml_config, merge_config_with_args
+from dedup_file_tools_fs_copy.utils.config_loader import load_yaml_config, merge_config_with_args
 import logging
 import sys
 import os
@@ -18,22 +18,22 @@ for i, arg in enumerate(sys.argv):
     if arg == '--log-level' and i + 1 < len(sys.argv):
         log_level = sys.argv[i + 1]
         break
-from fs_copy_tool.utils.logging_config import setup_logging
+from dedup_file_tools_fs_copy.utils.logging_config import setup_logging
 setup_logging(log_level=log_level)
 import os
 import sys
-from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
 from pathlib import Path
-from fs_copy_tool.db import init_db
-from fs_copy_tool.phases.analysis import analyze_volumes
-from fs_copy_tool.phases.copy import copy_files
-from fs_copy_tool.phases.verify import shallow_verify_files, deep_verify_files
-from fs_copy_tool.utils.uidpath import UidPathUtil, UidPath
-from fs_copy_tool.utils.checksum_cache import ChecksumCache
-from fs_copy_tool.utils.logging_config import setup_logging
+from dedup_file_tools_fs_copy.db import init_db
+from dedup_file_tools_fs_copy.phases.analysis import analyze_volumes
+from dedup_file_tools_fs_copy.phases.copy import copy_files
+from dedup_file_tools_fs_copy.phases.verify import shallow_verify_files, deep_verify_files
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil, UidPath
+from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_fs_copy.utils.logging_config import setup_logging
 
 def init_job_dir(job_dir, job_name, checksum_db=None):
-    from fs_copy_tool.db import init_db, init_checksum_db
+    from dedup_file_tools_fs_copy.db import init_db, init_checksum_db
     os.makedirs(job_dir, exist_ok=True)
     db_path = os.path.join(job_dir, f'{job_name}.db')
     checksum_db_path = checksum_db or os.path.join(job_dir, 'checksum-cache.db')
@@ -53,7 +53,7 @@ def get_checksum_db_path(job_dir, checksum_db=None):
 # Centralized DB connection with attached checksum DB
 def connect_with_attached_checksum_db(main_db_path, checksum_db_path):
     import logging
-    from fs_copy_tool.db import init_checksum_db
+    from dedup_file_tools_fs_copy.db import init_checksum_db
     import os
     # Ensure attached checksum DB has correct schema
     if not os.path.exists(checksum_db_path):
@@ -75,7 +75,7 @@ def connect_with_attached_checksum_db(main_db_path, checksum_db_path):
 def add_file_to_db(db_path, file_path):
     from pathlib import Path
     import sys
-    from fs_copy_tool.utils.uidpath import UidPathUtil
+    from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
     file = Path(file_path)
     if not file.is_file():
         logging.error(f"Error: {file_path} is not a file.")
@@ -339,7 +339,7 @@ def parse_args(args=None):
     parsed_args = parser.parse_args(args)
     # If config is provided, load YAML and merge
     if getattr(parsed_args, 'config', None):
-        from fs_copy_tool.utils.config_loader import load_yaml_config, merge_config_with_args
+        from dedup_file_tools_fs_copy.utils.config_loader import load_yaml_config, merge_config_with_args
         config_dict = load_yaml_config(parsed_args.config)
         parsed_args = merge_config_with_args(parsed_args, config_dict, parser)
     return parsed_args
@@ -348,17 +348,17 @@ def main(args=None):
     parsed_args = parse_args(args)
     # Always set up logging with job_dir if available
     job_dir = getattr(parsed_args, 'job_dir', None)
-    from fs_copy_tool.utils.logging_config import setup_logging
+    from dedup_file_tools_fs_copy.utils.logging_config import setup_logging
     setup_logging(job_dir)
     if getattr(parsed_args, 'command', None) == 'generate-config':
-        from fs_copy_tool.utils.interactive_config import interactive_config_generator
+        from dedup_file_tools_fs_copy.utils.interactive_config import interactive_config_generator
         interactive_config_generator()
         return 0
     return run_main_command(parsed_args)
 
 
 def handle_summary(args):
-    from fs_copy_tool.phases.summary import summary_phase
+    from dedup_file_tools_fs_copy.phases.summary import summary_phase
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     summary_phase(db_path, args.job_dir)
     return 0
@@ -380,7 +380,7 @@ def handle_copy(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     init_db(db_path)
-    from fs_copy_tool.utils.checksum_cache import ChecksumCache
+    from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
     from tqdm import tqdm
     import sqlite3
     def conn_factory():

@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="fs-copy-tool",
+    name="dedup-file-tools",
     version="0.1.0",
     description="Non-Redundant Media File Copy Tool: resumable, auditable, cross-platform, CLI-based.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="Your Name",
     author_email="your@email.com",
-    url="https://github.com/yourusername/fs-copy-tool",
+    url="https://github.com/vinitsiriya/dedup-file-tools",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -16,7 +16,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "fs-copy-tool=fs_copy_tool.main:main"
+            "dedup-file-copy-fs=dedup_file_tools_fs_copy.main:main",
+            "dedup-file-move-dupes=dedup_file_tools_fs_copy.main:main"
         ]
     },
     classifiers=[

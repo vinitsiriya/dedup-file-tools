@@ -3,8 +3,8 @@ import sqlite3
 import tempfile
 import pytest
 from pathlib import Path
-from fs_copy_tool.phases.analysis import persist_file_metadata, scan_files_on_volume, analyze_volumes
-from fs_copy_tool.utils.uidpath import UidPathUtil
+from dedup_file_tools_fs_copy.phases.analysis import persist_file_metadata, scan_files_on_volume, analyze_volumes
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
 
 def setup_test_db(tmp_path, table):
     db_path = tmp_path / "test_analysis.db"

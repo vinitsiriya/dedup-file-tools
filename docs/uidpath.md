@@ -36,7 +36,7 @@ The `UidPath` class provides a robust method to convert standard file paths into
 Suppose you have a file at `C:\Users\Alice\Documents\report.docx` and the C: drive has a volume serial number `A1B2C3D4`.
 
 ```python
-from fs_copy_tool.utils.uidpath import UidPathUtil
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
 
 uid_path = UidPathUtil()
 uid, rel_path = uid_path.convert_path(r'C:\Users\Alice\Documents\report.docx')
@@ -52,7 +52,7 @@ abs_path = uid_path.reconstruct_path(uid, rel_path)
 Suppose you have a file at `/mnt/data/photos/image.jpg` and `/mnt/data` is a mount point with UUID `1234-ABCD`.
 
 ```python
-from fs_copy_tool.utils.uidpath import UidPathUtil
+from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
 
 uid_path = UidPathUtil()
 uid, rel_path = uid_path.convert_path('/mnt/data/photos/image.jpg')

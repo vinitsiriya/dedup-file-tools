@@ -2,7 +2,7 @@ import os
 import sqlite3
 import tempfile
 import shutil
-from fs_copy_tool.phases.summary import summary_phase
+from dedup_file_tools_fs_copy.phases.summary import summary_phase
 
 def setup_db_with_files(statuses):
     tmpdir = tempfile.mkdtemp()

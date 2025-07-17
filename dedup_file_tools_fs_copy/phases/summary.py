@@ -1,6 +1,6 @@
 import os
 import csv
-from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
 import logging
 from pathlib import Path
 
@@ -10,7 +10,7 @@ def summary_phase(db_path, job_dir):
     """
     print("\n==== SUMMARY PHASE ====")
     print(f"Job directory: {job_dir}")
-    log_path = os.path.join(job_dir, 'fs_copy_tool.log')
+    log_path = os.path.join(job_dir, 'dedup_file_tools_fs_copy.log')
     if os.path.exists(log_path):
         print(f"Log file: {log_path}")
     else:

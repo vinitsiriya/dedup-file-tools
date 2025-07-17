@@ -28,11 +28,11 @@ def test_partial_dst_prepop(tmp_path):
     shutil.copy(src / "fileC.txt", dst / "fileC.txt")
     # Run workflow
     python = str(Path(".venv/Scripts/python.exe")) if Path(".venv/Scripts/python.exe").exists() else "python"
-    subprocess.run([python, "fs_copy_tool/main.py", "init", "--job-dir", str(job)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "checksum", "--job-dir", str(job), "--table", "destination_files"], check=True)
-    subprocess.run([python, "fs_copy_tool/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "init", "--job-dir", str(job)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "add-source", "--job-dir", str(job), "--src", str(src)], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "source_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "checksum", "--job-dir", str(job), "--table", "destination_files"], check=True)
+    subprocess.run([python, "dedup_file_tools_fs_copy/main.py", "copy", "--job-dir", str(job), "--dst", str(dst)], check=True)
     # Assert: files are copied to dst/<full_source_path>
     assert (dst / str(src / "fileA.txt")).read_text() == "This is file A"
     assert (dst / str(src / "fileC.txt")).read_text() == "This is file C"
