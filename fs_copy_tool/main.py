@@ -9,6 +9,7 @@ Description: Main orchestration script for Non-Redundant Media File Copy Tool
 """
 
 import argparse
+from fs_copy_tool.utils.config_loader import load_yaml_config, merge_config_with_args
 import logging
 import sys
 import os
@@ -181,6 +182,7 @@ def remove_file_from_db(db_path, file_path):
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Non-Redundant Media File Copy Tool")
+    parser.add_argument('-c', '--config', help='Path to YAML configuration file', default=None)
     subparsers = parser.add_subparsers(dest='command')
     # One-shot command (must be after subparsers is defined)
     parser_one_shot = subparsers.add_parser('one-shot', help='Run the full workflow (init, import, add-source, add-to-destination-index-pool, analyze, checksum, copy, verify, summary) in one command')
@@ -330,7 +332,14 @@ def parse_args(args=None):
     parser_summary.add_argument('--job-dir', required=True, help='Path to job directory')
     parser_summary.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
 
-    return parser.parse_args(args)
+    # Parse args first
+    parsed_args = parser.parse_args(args)
+    # If config is provided, load YAML and merge
+    if getattr(parsed_args, 'config', None):
+        from fs_copy_tool.utils.config_loader import load_yaml_config, merge_config_with_args
+        config_dict = load_yaml_config(parsed_args.config)
+        parsed_args = merge_config_with_args(parsed_args, config_dict, parser)
+    return parsed_args
 
 def main(args=None):
     parsed_args = parse_args(args)
