@@ -10,6 +10,7 @@ The tool supports a one-shot command to run the entire workflow in a single step
 - The checksum cache database is always named `checksum-cache.db` in the job directory.
 - The tool will not operate on legacy `copytool.db` files; migrate or re-initialize jobs as needed.
 
+
 ## Mechanism & Workflow
 - The tool operates in phases: initialization, file addition, analysis, checksum calculation, copy, verification, and audit.
 - All phases can be orchestrated in a single call using the one-shot command for automation and integration.
@@ -18,6 +19,26 @@ The tool supports a one-shot command to run the entire workflow in a single step
 - The tool is designed to be idempotent: interrupted or failed operations can be safely resumed without data loss or duplication.
 - Verification phases (shallow and deep) ensure data integrity after copy.
 - All operations, errors, and results are queryable and auditable via the database and CLI.
+
+
+For advanced automation and AI tool integration, all CLI options can also be provided in a YAML file using the `-c <config.yaml>` option. This enables workflows to be defined, versioned, and reused as code or data, making integration with external orchestrators or AI agents straightforward. For example:
+
+```
+python fs_copy_tool/main.py one-shot -c config.yaml
+```
+with a `config.yaml` such as:
+```yaml
+command: one-shot
+job_dir: /mnt/job
+job_name: job1
+src:
+  - /mnt/source1
+dst:
+  - /mnt/dest1
+threads: 8
+log_level: DEBUG
+```
+All CLI options are supported as YAML keys, and CLI arguments always override YAML config values if both are provided. This enables reproducible, declarative, and programmatically generated workflows for AI-driven automation.
 
 ## Import Checksums Feature (2025-07-15: Current Implementation)
 The import checksums feature allows you to import file checksums from another compatible job's checksum cache database, enabling fast migration and verification across jobs.
@@ -84,11 +105,16 @@ The import checksums feature allows you to import file checksums from another co
 ## How It Works
 You can run the full workflow in a single step using the one-shot command, or follow the step-by-step process below:
 
+
 **One-shot (full workflow in one command):**
 ```
 python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
 ```
-*Runs all steps below in order, stops on error, prints "Done" on success.*
+Or, using a YAML config file for all options:
+```
+python fs_copy_tool/main.py one-shot -c config.yaml
+```
+*Runs all steps below in order, stops on error, prints "Done" on success. All CLI options can be set in the YAML file; CLI args override YAML values.*
 
 **Step-by-step:**
 1. **Initialize a job directory** to store all state and logs.
@@ -201,6 +227,10 @@ fs-copy-tool <command> --job-dir <job_dir> --job-name <job_name> [other options]
 To run the full workflow in one step:
 ```
 python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
+```
+Or, using a YAML config file:
+```
+python fs_copy_tool/main.py one-shot -c config.yaml
 ```
 
 Or step-by-step:

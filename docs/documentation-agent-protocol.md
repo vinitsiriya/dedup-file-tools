@@ -11,12 +11,16 @@
    - Read the current contents of each relevant file before making changes.
    - Pay special attention to section structure and existing conventions.
 
+
 4. **Update Files in Protocol Order:**
    - Follow the strict update order defined above (requirements, implementation, feature, global requirements, CLI, etc.).
    - For each file:
      - Update only the sections that are relevant to the change.
      - Avoid unnecessary edits or restructuring.
      - If a section is already up to date, leave it unchanged.
+     - When updating CLI usage examples or automation/integration details (such as YAML config support), ensure these are reflected in all relevant documentation files (e.g., CLI docs, external tool integration docs, README), but only where contextually appropriate. Do not add information or headings where they are not relevant to the document's purpose or flow.
+     - Always maintain the natural flow and structure of each document—do not insert abrupt or intrusive headings or information blocks. Blend updates with care and precision.
+     - For complex or multi-faceted features, use multiple focused iterations to update different sections or document types, ensuring no section loses focus or clarity due to a single broad update.
 
 5. **Integrate Carefully:**
    - Ensure new information fits naturally into the document.

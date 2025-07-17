@@ -3,12 +3,20 @@
 ## Overview
 `fs-copy-tool` is a robust, resumable, and auditable file copy utility designed for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state and supports full workflow automation, verification, and resume.
 
+
 ## Usage
 
 All commands are run via the project's virtual environment Python:
 
 ```
 .venv\Scripts\python.exe fs_copy_tool/main.py <command> [options]
+```
+
+You can also provide a YAML configuration file for any command using the `-c <config.yaml>` or `--config <config.yaml>` option. All CLI options can be specified as YAML keys. CLI arguments always override YAML config values if both are provided.
+
+**Example:**
+```
+.venv\Scripts\python.exe fs_copy_tool/main.py one-shot -c config.yaml
 ```
 
 
@@ -22,7 +30,9 @@ Runs the entire workflow (init, import, add-source, add-to-destination-index-poo
 
 **If any step fails, the workflow stops immediately and prints an error.**
 
+
 Options:
+- `-c <config.yaml>`, `--config <config.yaml>` — Load all options from a YAML configuration file (CLI args override YAML)
 - `--threads N` — Number of threads for parallel operations (default: 4)
 - `--no-progress` — Disable progress bars
 - `--log-level LEVEL` — Set logging level (default: INFO)
@@ -111,10 +121,20 @@ Print a summary of the job, including what has happened, where the logs are, and
 **Robust Error Handling:**
 If any step in the one-shot workflow fails, execution stops immediately and an error is printed. This ensures no further steps are run after a failure.
 
-Notes:
 
-All commands are run via Python (use the virtual environment if available):
-Or, if installed as a package:
+**YAML Example:**
+```yaml
+command: one-shot
+job_dir: /path/to/job
+job_name: myjob
+src:
+  - /mnt/source1
+dst:
+  - /mnt/dest1
+threads: 8
+log_level: DEBUG
+```
+
 For verification, always use --stage shallow or --stage deep (not --phase).
 The add-source command is optimized for large datasets using batching and multithreading, and will show a progress bar for visibility.
 All operations are resumable, auditable, and robust against interruption.

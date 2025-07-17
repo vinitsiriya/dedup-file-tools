@@ -14,6 +14,7 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
   - `remove-file` — Remove a file from the job state/database
 - CLI commands for all phases: `init`, `analyze`, `import-checksums`, `checksum`, `copy`, `resume`, `status`, `log`, `verify`, `deep-verify`, and more
 - **One-Shot Command:** Run the entire workflow in a single step with `one-shot` (see Quick Start)
+- **YAML Config Support:** Use `-c <config.yaml>` to load all CLI options from a YAML file for any command. CLI args override YAML values. See CLI docs for details.
 - Verification and audit commands: `verify`, `deep-verify`, `verify-status`, `deep-verify-status`, `verify-status-summary`, `verify-status-full`, `deep-verify-status-summary`, `deep-verify-status-full`, `status`, `log`
 - Handles edge cases: partial/incomplete copies, missing files, already copied files, corrupted files (reports errors, does not fix)
 - Cross-platform: Windows & Linux
@@ -30,12 +31,17 @@ pip install -r requirements.txt
 ```
 
 
+
 ### 2. One-Shot Workflow (Recommended)
 Run the entire workflow (init, import, add-source, analyze, checksum, copy, verify, summary) in a single command:
 ```
 python -m fs_copy_tool.main one-shot --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
 ```
-*You can add options like `--threads`, `--no-progress`, `--log-level`, etc. See CLI docs for all options.*
+Or, use a YAML config file for all options:
+```
+python -m fs_copy_tool.main one-shot -c config.yaml
+```
+*All CLI options can be set in the YAML file. CLI args override YAML values. See CLI docs for YAML format and details.*
 
 **If any step fails, the workflow will stop immediately and print an error. On success, "Done" is printed.**
 
