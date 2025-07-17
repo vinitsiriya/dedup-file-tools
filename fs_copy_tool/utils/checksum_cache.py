@@ -119,11 +119,14 @@ class ChecksumCache:
         return checksum
 
     def exists_at_destination_pool(self, checksum: str) -> bool:
+        import logging
+        # Find the destination pool file and its cache entry
         with self.conn_factory() as conn:
             cur = conn.cursor()
             cur.execute(
                 """
-                SELECT 1 FROM destination_pool_files AS dpf
+                SELECT dpf.uid, dpf.relative_path, dpf.size, dpf.last_modified, cc.is_valid
+                FROM destination_pool_files AS dpf
                 JOIN checksumdb.checksum_cache AS cc
                   ON dpf.uid = cc.uid AND dpf.relative_path = cc.relative_path
                 WHERE cc.checksum = ? AND cc.is_valid = 1
@@ -131,7 +134,49 @@ class ChecksumCache:
                 """,
                 (checksum,)
             )
-            return cur.fetchone() is not None
+            row = cur.fetchone()
+        if not row:
+            logging.info(f"[ChecksumCache] No destination pool entry for checksum {checksum}")
+            return False
+        uid, rel_path, cached_size, cached_mtime, is_valid = row
+        # Reconstruct the file path using uid_path
+        from fs_copy_tool.utils.uidpath import UidPath
+        uid_path_obj = UidPath(uid, rel_path)
+        file_path = self.uid_path.reconstruct_path(uid_path_obj)
+        if not file_path or not Path(file_path).exists():
+            logging.warning(f"[ChecksumCache] Destination pool file missing: uid={uid}, rel_path={rel_path}, path={file_path}")
+            # Mark cache as not valid
+            with self.conn_factory() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE checksumdb.checksum_cache SET is_valid=0 WHERE uid=? AND relative_path=?",
+                    (uid, rel_path)
+                )
+                conn.commit()
+            return False
+        stat = Path(file_path).stat()
+        if stat.st_size != cached_size:
+            logging.warning(f"[ChecksumCache] Destination pool file size mismatch: {file_path} (disk={stat.st_size}, cache={cached_size})")
+            with self.conn_factory() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE checksumdb.checksum_cache SET is_valid=0 WHERE uid=? AND relative_path=?",
+                    (uid, rel_path)
+                )
+                conn.commit()
+            return False
+        if int(stat.st_mtime) != cached_mtime:
+            logging.warning(f"[ChecksumCache] Destination pool file mtime mismatch: {file_path} (disk={int(stat.st_mtime)}, cache={cached_mtime})")
+            with self.conn_factory() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE checksumdb.checksum_cache SET is_valid=0 WHERE uid=? AND relative_path=?",
+                    (uid, rel_path)
+                )
+                conn.commit()
+            return False
+        logging.info(f"[ChecksumCache] Destination pool file valid: {file_path}")
+        return True
 
     def get(self, path: str) -> Optional[str]:
         uid_path_obj = self.uid_path.convert_path(path)

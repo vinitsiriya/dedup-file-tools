@@ -581,20 +581,23 @@ def handle_import_checksums(args):
         cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
         rows = cur.fetchall()
     # Insert into attached checksum DB
-    logging.info(f"Rows to import from other DB: {rows}")
+    logging.info(f"Rows to import from other DB: {len(rows)} rows")
+    from tqdm import tqdm
     conn = connect_with_attached_checksum_db(db_path, checksum_db_path)
     try:
         cur = conn.cursor()
-        for row in rows:
-            cur.execute("""
-                INSERT OR REPLACE INTO checksumdb.checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, row)
+        with tqdm(total=len(rows), desc="Importing checksums", unit="row") as pbar:
+            for row in rows:
+                cur.execute("""
+                    INSERT OR REPLACE INTO checksumdb.checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, row)
+                pbar.update(1)
         conn.commit()
         # Log all rows in checksum_cache after import
-        cur.execute("SELECT uid, relative_path, checksum FROM checksumdb.checksum_cache")
-        all_rows = cur.fetchall()
-        logging.info(f"All rows in main job's checksum_cache after import: {all_rows}")
+        cur.execute("SELECT COUNT(*) FROM checksumdb.checksum_cache")
+        count = cur.fetchone()[0]
+        logging.info(f"All rows in main job's checksum_cache after import: {count} rows")
     finally:
         conn.close()
     logging.info(f"Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
