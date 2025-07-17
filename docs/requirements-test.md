@@ -1,3 +1,8 @@
+## One-Shot Command Test Requirements (2025-07)
+
+- Automated tests MUST cover minimal and option-rich invocations of the one-shot command.
+- Tests MUST check that the workflow stops on error and prints the correct output.
+- See `requirements/one-shot.md` and `tests/test_one_shot_command.py` for details.
 # requirements-test.md
 
 This file contains all requirements and protocols for automated, stress, and edge-case testing of the fs-copy-tool project. It is maintained separately from requirements.md to allow detailed tracking and evolution of test-specific requirements, fixtures, and protocols.

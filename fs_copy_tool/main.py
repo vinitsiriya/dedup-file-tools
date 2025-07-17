@@ -182,6 +182,24 @@ def remove_file_from_db(db_path, file_path):
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Non-Redundant Media File Copy Tool")
     subparsers = parser.add_subparsers(dest='command')
+    # One-shot command (must be after subparsers is defined)
+    parser_one_shot = subparsers.add_parser('one-shot', help='Run the full workflow (init, import, add-source, add-to-destination-index-pool, analyze, checksum, copy, verify, summary) in one command')
+    parser_one_shot.add_argument('--job-dir', required=True, help='Path to job directory')
+    parser_one_shot.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
+    parser_one_shot.add_argument('--src', nargs='+', required=True, help='Source volume root(s)')
+    parser_one_shot.add_argument('--dst', nargs='+', required=True, help='Destination volume root(s)')
+    parser_one_shot.add_argument('--log-level', default='INFO', help='Set logging level (default: INFO)')
+    parser_one_shot.add_argument('--threads', type=int, default=4, help='Number of threads for parallel operations (default: 4)')
+    parser_one_shot.add_argument('--no-progress', action='store_true', help='Disable progress bars')
+    parser_one_shot.add_argument('--resume', action='store_true', default=True, help='Resume incomplete jobs (default: True for copy phase)')
+    parser_one_shot.add_argument('--reverify', action='store_true', help='Force re-verification in verify/deep-verify')
+    parser_one_shot.add_argument('--checksum-db', help='Custom checksum DB path (default: <job-dir>/checksum-cache.db)')
+    parser_one_shot.add_argument('--other-db', help='Path to another compatible SQLite database for importing checksums')
+    parser_one_shot.add_argument('--table', choices=['source_files', 'destination_files'], default='source_files', help='Table to use for checksumming (default: source_files)')
+    parser_one_shot.add_argument('--stage', choices=['shallow', 'deep'], default='shallow', help='Verification stage (default: shallow)')
+    parser_one_shot.add_argument('--skip-verify', action='store_true', help='Skip verification steps')
+    parser_one_shot.add_argument('--deep-verify', action='store_true', help='Perform deep verification after shallow verification')
+    parser_one_shot.add_argument('--dst-index-pool', help='Path to destination index pool (default: value of --dst)')
     # Add to destination index pool command (must be after subparsers is defined)
     parser_add_pool = subparsers.add_parser('add-to-destination-index-pool', help='Scan and add/update all files in the destination pool index')
     parser_add_pool.add_argument('--job-dir', required=True, help='Path to job directory')
@@ -604,6 +622,122 @@ def handle_import_checksums(args):
     return 0
 
 def run_main_command(args):
+    if getattr(args, 'command', None) == 'one-shot':
+        # Set up logging
+        setup_logging(log_level=getattr(args, 'log_level', 'INFO'))
+        # Step 1: Init job dir
+        try:
+            init_job_dir(args.job_dir, args.job_name, getattr(args, 'checksum_db', None))
+        except Exception as e:
+            print(f"Error in init_job_dir: {e}")
+            return 1
+        # Step 2: Import checksums if provided
+        if getattr(args, 'other_db', None):
+            class ImportArgs: pass
+            import_args = ImportArgs()
+            import_args.job_dir = args.job_dir
+            import_args.job_name = args.job_name
+            import_args.other_db = args.other_db
+            import_args.checksum_db = getattr(args, 'checksum_db', None)
+            rc = handle_import_checksums(import_args)
+            if rc != 0:
+                print("Error in import-checksums step.")
+                return rc
+        # Step 3: Add source
+        class AddSourceArgs: pass
+        add_source_args = AddSourceArgs()
+        add_source_args.job_dir = args.job_dir
+        add_source_args.job_name = args.job_name
+        add_source_args.src = args.src[0] if isinstance(args.src, list) else args.src
+        rc = handle_add_source(add_source_args)
+        if rc is not None and rc != 0:
+            print("Error in add-source step.")
+            return rc
+        # Step 4: Add to destination index pool
+        dst_index_pool = getattr(args, 'dst_index_pool', None) or (args.dst[0] if isinstance(args.dst, list) else args.dst)
+        class AddPoolArgs: pass
+        add_pool_args = AddPoolArgs()
+        add_pool_args.job_dir = args.job_dir
+        add_pool_args.job_name = args.job_name
+        add_pool_args.dst = dst_index_pool
+        rc = handle_add_to_destination_index_pool(add_pool_args)
+        if rc is not None and rc != 0:
+            print("Error in add-to-destination-index-pool step.")
+            return rc
+        # Step 5: Analyze
+        class AnalyzeArgs: pass
+        analyze_args = AnalyzeArgs()
+        analyze_args.job_dir = args.job_dir
+        analyze_args.job_name = args.job_name
+        analyze_args.src = args.src
+        analyze_args.dst = args.dst
+        rc = handle_analyze(analyze_args)
+        if rc is not None and rc != 0:
+            print("Error in analyze step.")
+            return rc
+        # Step 6: Checksums (source)
+        class ChecksumArgs: pass
+        checksum_args = ChecksumArgs()
+        checksum_args.job_dir = args.job_dir
+        checksum_args.job_name = args.job_name
+        checksum_args.table = 'source_files'
+        checksum_args.threads = args.threads
+        checksum_args.no_progress = args.no_progress
+        checksum_args.checksum_db = getattr(args, 'checksum_db', None)
+        rc = handle_checksum(checksum_args)
+        if rc is not None and rc != 0:
+            print("Error in checksum (source_files) step.")
+            return rc
+        # Step 7: Checksums (destination)
+        checksum_args.table = 'destination_files'
+        rc = handle_checksum(checksum_args)
+        if rc is not None and rc != 0:
+            print("Error in checksum (destination_files) step.")
+            return rc
+        # Step 8: Copy
+        class CopyArgs: pass
+        copy_args = CopyArgs()
+        copy_args.job_dir = args.job_dir
+        copy_args.job_name = args.job_name
+        copy_args.src = args.src
+        copy_args.dst = args.dst
+        copy_args.threads = args.threads
+        copy_args.no_progress = args.no_progress
+        copy_args.resume = args.resume
+        rc = handle_copy(copy_args)
+        if rc is not None and rc != 0:
+            print("Error in copy step.")
+            return rc
+        # Step 9: Verify (shallow)
+        if not args.skip_verify:
+            class VerifyArgs: pass
+            verify_args = VerifyArgs()
+            verify_args.job_dir = args.job_dir
+            verify_args.job_name = args.job_name
+            verify_args.stage = 'shallow'
+            verify_args.reverify = args.reverify
+            rc = handle_verify(verify_args)
+            if rc is not None and rc != 0:
+                print("Error in verify (shallow) step.")
+                return rc
+            # Step 10: Verify (deep) if requested
+            if args.deep_verify or args.stage == 'deep':
+                verify_args.stage = 'deep'
+                rc = handle_verify(verify_args)
+                if rc is not None and rc != 0:
+                    print("Error in verify (deep) step.")
+                    return rc
+        # Step 11: Summary
+        class SummaryArgs: pass
+        summary_args = SummaryArgs()
+        summary_args.job_dir = args.job_dir
+        summary_args.job_name = args.job_name
+        rc = handle_summary(summary_args)
+        if rc is not None and rc != 0:
+            print("Error in summary step.")
+            return rc
+        print("Done")
+        return 0
     if getattr(args, 'command', None) == 'add-to-destination-index-pool':
         return handle_add_to_destination_index_pool(args)
     if args.command == 'init':

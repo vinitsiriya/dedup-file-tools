@@ -3,6 +3,8 @@
 ## Overview
 `fs-copy-tool` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
 
+The tool supports a one-shot command to run the entire workflow in a single step, making it ideal for AI tool integration and automation scenarios.
+
 ## Architecture Note (2025-07)
 - All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name <job-name>`.
 - The checksum cache database is always named `checksum-cache.db` in the job directory.
@@ -10,6 +12,7 @@
 
 ## Mechanism & Workflow
 - The tool operates in phases: initialization, file addition, analysis, checksum calculation, copy, verification, and audit.
+- All phases can be orchestrated in a single call using the one-shot command for automation and integration.
 - All state and progress are tracked in a dedicated SQLite database (one per job directory).
 - The CLI orchestrates all operations, ensuring resumability, deduplication, and auditability.
 - The tool is designed to be idempotent: interrupted or failed operations can be safely resumed without data loss or duplication.
@@ -64,7 +67,7 @@ The import checksums feature allows you to import file checksums from another co
 
 (Other tables: `source_files`, `destination_files`, `verification_shallow_results`, `verification_deep_results` are present in `<job-name>.db` for job state and verification.)
 
-## Key Features
+- Key Features
 - Block-wise (4KB) file copying with SHA-256 checksums
 - Deduplication: skips files already present in the destination (by checksum)
 - Fully resumable: safely interrupt and resume at any time
@@ -72,11 +75,22 @@ The import checksums feature allows you to import file checksums from another co
 - Stateful, file-level job setup and modification
 - CLI commands for all phases: initialization, analysis, checksum, copy, resume, verification, audit, and more
 - Comprehensive verification and audit commands
+- **One-shot command:** Run the entire workflow in a single step for automation and integration
 - Handles edge cases: partial/incomplete copies, missing files, already copied files, corrupted files (reports errors, does not fix)
 - Cross-platform: Windows & Linux
 - Full automated and manual test suite for all features and edge cases
 
+
 ## How It Works
+You can run the full workflow in a single step using the one-shot command, or follow the step-by-step process below:
+
+**One-shot (full workflow in one command):**
+```
+python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
+```
+*Runs all steps below in order, stops on error, prints "Done" on success.*
+
+**Step-by-step:**
 1. **Initialize a job directory** to store all state and logs.
 2. **Add files or directories** to the job database (file-level stateful setup).
 3. **Analyze** source and destination volumes to gather file metadata.
@@ -87,9 +101,15 @@ The import checksums feature allows you to import file checksums from another co
 8. **Import checksums** from another compatible checksum cache database if needed (from `checksum_cache` only).
 
 
+
 ## CLI Usage
 
-All commands are run via Python (use the virtual environment if available):
+To run the full workflow in one step (recommended for automation):
+```
+python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
+```
+
+Or use the step-by-step commands:
 ```
 python fs_copy_tool/main.py <command> --job-dir <job_dir> --job-name <job_name> [other options]
 ```
@@ -176,9 +196,15 @@ fs-copy-tool <command> --job-dir <job_dir> --job-name <job_name> [other options]
 - The add-source command is optimized for large datasets using batching and multithreading, and will show a progress bar for visibility.
 - All operations are resumable, auditable, and robust against interruption.
 
+
 ### Example Workflow
+To run the full workflow in one step:
 ```
-pip install -r requirements.txt
+python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
+```
+
+Or step-by-step:
+```
 python fs_copy_tool/main.py init --job-dir <job_dir> --job-name <job_name>
 python fs_copy_tool/main.py add-source --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT>
 python fs_copy_tool/main.py analyze --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>

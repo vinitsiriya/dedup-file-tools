@@ -13,12 +13,14 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
   - `add-file` — Add a single file to the job state/database
   - `remove-file` — Remove a file from the job state/database
 - CLI commands for all phases: `init`, `analyze`, `import-checksums`, `checksum`, `copy`, `resume`, `status`, `log`, `verify`, `deep-verify`, and more
+- **One-Shot Command:** Run the entire workflow in a single step with `one-shot` (see Quick Start)
 - Verification and audit commands: `verify`, `deep-verify`, `verify-status`, `deep-verify-status`, `verify-status-summary`, `verify-status-full`, `deep-verify-status-summary`, `deep-verify-status-full`, `status`, `log`
 - Handles edge cases: partial/incomplete copies, missing files, already copied files, corrupted files (reports errors, does not fix)
 - Cross-platform: Windows & Linux
 - Full test suite for all features, edge cases, and workflows
 
 ---
+
 
 ## Quick Start
 
@@ -27,34 +29,47 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 pip install -r requirements.txt
 ```
 
+
+### 2. One-Shot Workflow (Recommended)
+Run the entire workflow (init, import, add-source, analyze, checksum, copy, verify, summary) in a single command:
 ```
-python -m fs_copy_tool.main init --job-dir .copy-task
+python -m fs_copy_tool.main one-shot --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
+```
+*You can add options like `--threads`, `--no-progress`, `--log-level`, etc. See CLI docs for all options.*
+
+**If any step fails, the workflow will stop immediately and print an error. On success, "Done" is printed.**
+
+### 3. Manual (Step-by-Step) Workflow
+
+#### a. Initialize Job Directory
+```
+python -m fs_copy_tool.main init --job-dir .copy-task --job-name <job-name>
 ```
 
-### 3. Add Files or Sources to the Job (Stateful Setup)
+#### b. Add Files or Sources to the Job
 # Add a single file:
-python -m fs_copy_tool.main add-file --job-dir .copy-task --file <FILE_PATH>
+python -m fs_copy_tool.main add-file --job-dir .copy-task --job-name <job-name> --file <FILE_PATH>
 # Add all files from a directory:
-python -m fs_copy_tool.main add-source --job-dir .copy-task --src <SRC_ROOT>
+python -m fs_copy_tool.main add-source --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT>
 # List all files in the job:
-python -m fs_copy_tool.main list-files --job-dir .copy-task
+python -m fs_copy_tool.main list-files --job-dir .copy-task --job-name <job-name>
 # Remove a file from the job:
-python -m fs_copy_tool.main remove-file --job-dir .copy-task --file <FILE_PATH>
+python -m fs_copy_tool.main remove-file --job-dir .copy-task --job-name <job-name> --file <FILE_PATH>
 
-### 4. Analyze Source and Destination Volumes
+#### c. Analyze Source and Destination Volumes
 ```
-python -m fs_copy_tool.main analyze --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
-```
-
-### 5. Compute Checksums
-```
-python -m fs_copy_tool.main checksum --job-dir .copy-task --table source_files
-python -m fs_copy_tool.main checksum --job-dir .copy-task --table destination_files
+python -m fs_copy_tool.main analyze --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT> --dst <DST_ROOT>
 ```
 
-### 6. Copy Non-Redundant Files (with Destination Pool Validation)
+#### d. Compute Checksums
 ```
-python -m fs_copy_tool.main copy --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
+python -m fs_copy_tool.main checksum --job-dir .copy-task --job-name <job-name> --table source_files
+python -m fs_copy_tool.main checksum --job-dir .copy-task --job-name <job-name> --table destination_files
+```
+
+#### e. Copy Non-Redundant Files (with Destination Pool Validation)
+```
+python -m fs_copy_tool.main copy --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT> --dst <DST_ROOT>
 ```
 *Before copying, the tool will update and validate all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.*
 

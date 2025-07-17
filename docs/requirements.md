@@ -1,3 +1,10 @@
+## One-Shot Command (2025-07)
+
+- The tool MUST provide a `one-shot` CLI command to run the entire workflow (init, import, add-source, analyze, checksum, copy, verify, summary) in a single step.
+- The command MUST accept all required and optional arguments for the full workflow.
+- The workflow MUST stop immediately and print an error if any step fails.
+- The command MUST print "Done" on success.
+- See `requirements/one-shot.md` for full details.
 # Non-Redundant Media File Copy Tool — Requirements & Design
 
 
