@@ -7,12 +7,17 @@ Unit tests verify the correctness of individual modules and functions in isolati
 - All unit tests are located in the `tests/` directory.
 - Example files: `test_utils.py`, `test_phases.py`, `test_import_checksums.py`, `test_jobdir.py`.
 
+
 ## How to Run
 - Use the provided scripts:
   - On Linux/macOS: `./scripts/test.sh`
   - On Windows: `./scripts/test.ps1`
 - Or run directly with pytest:
   - `pytest tests/`
+
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
 
 ## Guidelines
 - Each test should be independent and not rely on external state.

@@ -28,3 +28,7 @@ The summary phase provides a final reporting step for the file copy tool. It is 
 - If all files are copied successfully, the CSV contains only a header row.
 - If there are errors or incomplete files, the CSV lists each with details.
 - The feature is covered by automated tests.
+
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.

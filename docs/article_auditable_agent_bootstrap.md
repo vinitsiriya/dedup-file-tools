@@ -98,6 +98,10 @@ The protocol is designed for both human and AI agents, with clear, repeatable st
 
 The Auditable Agent Bootstrap method is a best-in-class approach for any project where reliability, auditability, and collaboration are critical. By making every step explicit, script-driven, and protocol-compliant, it ensures that both human and AI agents can work together efficiently, recover from interruptions, and maintain a clean, trustworthy project history.
 
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
+
 ---
 
 *For implementation details and real-world examples, see the fs-copy-tool project’s `AGENTS.md` and related protocol files.*

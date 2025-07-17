@@ -74,3 +74,7 @@ uid, rel_path = uid_path.convert_path(r'C:\Temp\pytest-123\mount\file.txt')
 ```
 
 This approach ensures that file references remain valid and portable, regardless of the underlying operating system or mount point changes.
+
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.

@@ -27,7 +27,6 @@ Safely copy media files (photos, videos) from a source HDD pool to a destination
 pip install -r requirements.txt
 ```
 
-### 2. Initialize a Job Directory
 ```
 python -m fs_copy_tool.main init --job-dir .copy-task
 ```
@@ -58,6 +57,15 @@ python -m fs_copy_tool.main checksum --job-dir .copy-task --table destination_fi
 python -m fs_copy_tool.main copy --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
 ```
 *Before copying, the tool will update and validate all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.*
+
+---
+
+## Important Architecture Notes (2025-07)
+
+- All job databases are now named `<job-name>.db` in the job directory. You must specify `--job-name` for all CLI commands that operate on a job.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
+- All CLI usage examples must include `--job-name <job-name>`.
+- The tool will not operate on legacy `copytool.db` files; migrate or re-initialize jobs as needed.
 
 ### 7. Resume, Status, and Logs
 ```

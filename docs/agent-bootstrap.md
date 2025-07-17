@@ -17,4 +17,8 @@ This file provides strict instructions for agents on how and when to load docume
 
 ---
 
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
+
 _This file does not list or summarize documentation. For a full list, see `docs/index.md`. For other project documentation, refer to the relevant directories._

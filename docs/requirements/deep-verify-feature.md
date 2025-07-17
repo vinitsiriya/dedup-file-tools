@@ -19,6 +19,10 @@ Deep verify is a superset of shallow verify: it performs all shallow checks (exi
 - The tool must log all failures with enough detail for audit and troubleshooting.
 - There must be an option (e.g., `--reverify`) that, when used, will undo any previous 'done' status marking for files and force all files to be re-verified, regardless of their prior status.
 
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
+
 ## Out of Scope
 - Deep verify does not attempt to repair or re-copy failed files (verification only).
 - Does not guarantee detection of corruption if both source and destination are identically corrupted before verification.

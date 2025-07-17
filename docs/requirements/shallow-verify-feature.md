@@ -20,3 +20,7 @@ Shallow verification checks that files exist at the destination and that their b
 ## Out of Scope
 - Shallow verify does not check file contents or cryptographic hashes.
 - Does not detect silent bit-level corruption if size and mtime are unchanged.
+
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.

@@ -1,8 +1,18 @@
 # Non-Redundant Media File Copy Tool — Requirements & Design
 
+
 ## Purpose
 
 Safely copy media files (photos, videos) from a source HDD pool to a destination HDD pool, ensuring **no redundant (duplicate) files** at the destination. The tool robustly supports both fixed and removable drives by tracking volumes using unique IDs (UUID or Serial Number), and is fully resumable and reliable using an SQLite database for all state.
+
+---
+
+## Architecture Update (2025-07)
+
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
+- All documentation, requirements, and test protocols must use the new DB naming and CLI conventions.
+- Legacy `copytool.db` is no longer supported.
 
 ---
 

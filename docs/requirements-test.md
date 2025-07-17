@@ -25,6 +25,8 @@ This file contains all requirements and protocols for automated, stress, and edg
 
 ## CLI and Feature Test Coverage Requirements
 - All CLI commands and options must have corresponding automated tests:
+  - All commands require `--job-name` and use `<job-name>.db` for the job database.
+  - The checksum cache database is always `checksum-cache.db` in the job directory.
   - `init`, `import-checksums`, `analyze`, `checksum`, `copy`, `resume`, `status`, `log`,
   - `add-file`, `add-source`, `list-files`, `remove-file`
 - Tests MUST cover:

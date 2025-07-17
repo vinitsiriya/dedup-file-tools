@@ -12,6 +12,10 @@ Manual tests are used for interactive or exploratory testing, especially for sce
 - On Windows, run the relevant script in `manual_tests/<scenario>/` in PowerShell.
 - Use `generate_fixtures_manual.py` to create custom test directories and files in the appropriate workspace (e.g., `.temp/manual_tests/<scenario>`).
 
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
+
 ## Guidelines
 - Use manual tests to verify UI/CLI feedback, logging, and edge cases.
 - Record observations and issues in the appropriate planning or log files.

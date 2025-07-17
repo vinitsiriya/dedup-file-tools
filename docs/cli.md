@@ -111,7 +111,7 @@ All operations are resumable, auditable, and robust against interruption.
 .venv\Scripts\python.exe fs_copy_tool/main.py status --job-dir .temp/job
 .venv\Scripts\python.exe fs_copy_tool/main.py verify --job-dir .temp/job --src .temp/src --dst .temp/dst
 .venv\Scripts\python.exe fs_copy_tool/main.py deep-verify --job-dir .temp/job --src .temp/src --dst .temp/dst
-.venv\Scripts\python.exe fs_copy_tool/main.py import-checksums --job-dir .temp/job --other-db .temp/other_job/copytool.db
+.venv\Scripts\python.exe fs_copy_tool/main.py import-checksums --job-dir .temp/job --job-name <job-name> --other-db .temp/other_job/checksum-cache.db
  .venv\Scripts\python.exe fs_copy_tool/main.py summary --job-dir .temp/job
 ```
 
