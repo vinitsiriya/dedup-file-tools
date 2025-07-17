@@ -44,6 +44,7 @@ python -m fs_copy_tool.main one-shot -c config.yaml
 ```
 *All CLI options can be set in the YAML file. CLI args override YAML values. See CLI docs for YAML format and details.*
 
+
 #### Generate a Config File Interactively
 To create a YAML config file interactively, run:
 ```

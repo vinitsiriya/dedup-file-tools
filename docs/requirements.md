@@ -280,9 +280,9 @@ All commands must be robust, auditable, and support full state persistence in th
 
 ## Test Requirements
 
-- All detailed requirements and protocols for automated, stress, and edge-case testing are maintained in `requirements-test.md`.
-- This file (`requirements.md`) will reference `requirements-test.md` for all test-related requirements.
-
+- Interactive config generator: Users can generate a YAML config file interactively using the CLI (`generate-config` command). See feature and implementation docs for details.
 ---
+
+
 
 

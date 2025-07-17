@@ -13,7 +13,12 @@ All commands are run via the project's virtual environment Python:
 ```
 
 
-You can also provide a YAML configuration file for any command using the `-c <config.yaml>` or `--config <config.yaml>` option. All CLI options can be specified as YAML keys. CLI arguments always override YAML config values if both are provided.
+
+You can also generate a YAML config file interactively using:
+```
+.venv\Scripts\python.exe fs_copy_tool/main.py generate-config
+```
+This will prompt for all required fields and write a config file for use with `-c`.
 
 ---
 

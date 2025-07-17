@@ -12,8 +12,6 @@ This file contains all requirements and protocols for automated, stress, and edg
 - This file is subject to the same agent protocol and archival rules as other requirements and planning files.
 
 ## Automated, Stress, and Edge-Case Testing Requirements
-- A fixture generator script MUST exist (see `scripts/generate_fixtures.py`) to create large, complex, and edge-case file/directory structures for testing.
-- The fixture generator MUST support:
   - Deeply nested directories
   - Long file names and paths
   - Large files (100s MBs/GBs)
@@ -22,7 +20,7 @@ This file contains all requirements and protocols for automated, stress, and edg
   - Special characters, Unicode, reserved names in filenames
   - Read-only files or directories
   - Identical names in different directories
-- E2E and integration tests MUST:
+- Test: Interactive config generator command (`generate-config`) prompts for all required fields, writes a valid YAML file, and works with the -c option. Automated test simulates user input and verifies output.
   - Use the fixture generator to create test directories
   - Be robust, repeatable, and clean up after themselves
 - Manual test scripts SHOULD optionally use the large/complex fixtures for interactive/manual runs

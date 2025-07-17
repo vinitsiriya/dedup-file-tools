@@ -1,7 +1,29 @@
+
 # fs-copy-tool: Portable Documentation for AI Tool Integration
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture Note (2025-07)](#architecture-note-2025-07)
+- [Mechanism & Workflow](#mechanism--workflow)
+- [Import Checksums Feature](#import-checksums-feature-2025-07-15-current-implementation)
+- [Database Schema](#database-schema)
+- [How It Works](#how-it-works)
+- [CLI Usage](#cli-usage)
+- [Main Commands & Options](#main-commands--options)
+- [Example Workflow](#example-workflow)
+- [Edge Cases & Robustness](#edge-cases--robustness)
+- [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Packaging & Installation](#packaging--installation)
+- [License](#license)
+
 ## Overview
+
 `fs-copy-tool` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
+
+**New Feature (2025-07-18):**
+The tool now includes an interactive config generator (`generate-config` command) that allows users or agents to create a YAML config file step-by-step via CLI prompts. This makes onboarding, automation, and integration even easier.
 
 The tool supports a one-shot command to run the entire workflow in a single step, making it ideal for AI tool integration and automation scenarios.
 
@@ -21,12 +43,21 @@ The tool supports a one-shot command to run the entire workflow in a single step
 - All operations, errors, and results are queryable and auditable via the database and CLI.
 
 
-For advanced automation and AI tool integration, all CLI options can also be provided in a YAML file using the `-c <config.yaml>` option. This enables workflows to be defined, versioned, and reused as code or data, making integration with external orchestrators or AI agents straightforward. For example:
+### Interactive Config Generation (2025-07-18: New Feature)
 
+You can now generate a YAML config file interactively using the CLI:
+```
+python fs_copy_tool/main.py generate-config
+```
+This will prompt for all required fields and write a config file for use with `-c`. This is ideal for onboarding, automation, and reducing manual errors. The generated config can then be used with any command that supports `-c`, for example:
 ```
 python fs_copy_tool/main.py one-shot -c config.yaml
 ```
-with a `config.yaml` such as:
+or
+```
+python fs_copy_tool/main.py copy -c config.yaml
+```
+Example generated `config.yaml`:
 ```yaml
 command: one-shot
 job_dir: /mnt/job
@@ -103,7 +134,13 @@ The import checksums feature allows you to import file checksums from another co
 
 
 ## How It Works
-You can run the full workflow in a single step using the one-shot command, or follow the step-by-step process below:
+
+You can run the full workflow in a single step using the one-shot command, or follow the step-by-step process below. To simplify setup, use the interactive config generator to create your YAML config file first:
+
+```
+python fs_copy_tool/main.py generate-config
+```
+Then use the generated config with any command supporting `-c`.
 
 
 **One-shot (full workflow in one command):**
@@ -130,21 +167,37 @@ python fs_copy_tool/main.py one-shot -c config.yaml
 
 ## CLI Usage
 
+### Generate a Config File Interactively
+To create a YAML config file interactively, run:
+```
+python fs_copy_tool/main.py generate-config
+```
+Follow the prompts to generate a config file for use with `-c`.
+
+### Run the Full Workflow
 To run the full workflow in one step (recommended for automation):
 ```
-python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
+python fs_copy_tool/main.py one-shot -c config.yaml
 ```
-
 Or use the step-by-step commands:
 ```
-python fs_copy_tool/main.py <command> --job-dir <job_dir> --job-name <job_name> [other options]
+python fs_copy_tool/main.py <command> -c config.yaml
 ```
 Or, if installed as a package:
 ```
-fs-copy-tool <command> --job-dir <job_dir> --job-name <job_name> [other options]
+fs-copy-tool <command> -c config.yaml
 ```
 
+
 ### Main Commands & Options
+
+- `generate-config`
+  - Launches an interactive prompt to create a YAML config file for use with `-c`.
+  - Example:
+    ```
+    python fs_copy_tool/main.py generate-config
+    ```
+  - Prompts for all required fields and writes a config file for use with any command supporting `-c`.
 
 - `init --job-dir <job_dir> --job-name <job_name>`
   - Initialize a new job directory (creates `<job-name>.db` and `checksum-cache.db`).
@@ -224,29 +277,29 @@ fs-copy-tool <command> --job-dir <job_dir> --job-name <job_name> [other options]
 
 
 ### Example Workflow
-To run the full workflow in one step:
-```
-python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
-```
-Or, using a YAML config file:
-```
-python fs_copy_tool/main.py one-shot -c config.yaml
-```
 
-Or step-by-step:
-```
-python fs_copy_tool/main.py init --job-dir <job_dir> --job-name <job_name>
-python fs_copy_tool/main.py add-source --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT>
-python fs_copy_tool/main.py analyze --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py checksum --job-dir <job_dir> --job-name <job_name> --table source_files
-python fs_copy_tool/main.py checksum --job-dir <job_dir> --job-name <job_name> --table destination_files
-python fs_copy_tool/main.py copy --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py status --job-dir <job_dir> --job-name <job_name>
-python fs_copy_tool/main.py verify --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py deep-verify --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db
-python fs_copy_tool/main.py summary --job-dir <job_dir> --job-name <job_name>
-```
+### Example Workflow
+1. **Generate a config file interactively:**
+   ```
+   python fs_copy_tool/main.py generate-config
+   ```
+2. **Run the full workflow in one step:**
+   ```
+   python fs_copy_tool/main.py one-shot -c config.yaml
+   ```
+3. **Or step-by-step:**
+   ```
+   python fs_copy_tool/main.py init -c config.yaml
+   python fs_copy_tool/main.py add-source -c config.yaml
+   python fs_copy_tool/main.py analyze -c config.yaml
+   python fs_copy_tool/main.py checksum -c config.yaml
+   python fs_copy_tool/main.py copy -c config.yaml
+   python fs_copy_tool/main.py status -c config.yaml
+   python fs_copy_tool/main.py verify -c config.yaml
+   python fs_copy_tool/main.py deep-verify -c config.yaml
+   python fs_copy_tool/main.py import-checksums -c config.yaml
+   python fs_copy_tool/main.py summary -c config.yaml
+   ```
 
 ## Edge Cases & Robustness
 - Skips already copied files (deduplication)
