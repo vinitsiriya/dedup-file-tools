@@ -1,6 +1,6 @@
 import os
 import csv
-import sqlite3
+from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
 import logging
 from pathlib import Path
 
@@ -16,7 +16,7 @@ def summary_phase(db_path, job_dir):
     else:
         print("Log file not found in job directory.")
 
-    conn = sqlite3.connect(db_path)
+    conn = RobustSqliteConn(db_path).connect()
     cur = conn.cursor()
     # Collect files with errors or not done from copy_status table
     cur.execute("""

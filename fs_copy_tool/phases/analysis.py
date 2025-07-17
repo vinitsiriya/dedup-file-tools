@@ -3,7 +3,7 @@ File: fs-copy-tool/phases/analysis.py
 Description: Analysis phase logic (scanning and metadata extraction)
 """
 import logging
-import sqlite3
+from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
 from fs_copy_tool.utils.uidpath import UidPathUtil
 from fs_copy_tool.utils.fileops import compute_sha256
 from pathlib import Path
@@ -11,7 +11,7 @@ import os
 from tqdm import tqdm
 
 def persist_file_metadata(db_path, table, file_info):
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute(f"""
             INSERT INTO {table} (uid, relative_path, size, last_modified)

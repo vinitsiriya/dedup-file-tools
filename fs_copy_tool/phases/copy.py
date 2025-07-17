@@ -3,7 +3,7 @@ File: fs-copy-tool/phases/copy.py
 Description: Copy phase logic for Non-Redundant Media File Copy Tool
 """
 import logging
-import sqlite3
+from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
 from pathlib import Path
 from fs_copy_tool.utils.fileops import copy_file, verify_file
 from fs_copy_tool.utils.checksum_cache import ChecksumCache
@@ -23,7 +23,7 @@ def reset_status_for_missing_files(db_path, dst_roots):
     from pathlib import Path
     import sys
     import sqlite3
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT uid, relative_path FROM source_files
@@ -45,7 +45,7 @@ def reset_status_for_missing_files(db_path, dst_roots):
                     missing = False
                     break
             # Query copy_status from new table
-            with sqlite3.connect(db_path) as conn2:
+            with RobustSqliteConn(db_path).connect() as conn2:
                 cur2 = conn2.cursor()
                 cur2.execute("""
                     SELECT status FROM copy_status WHERE uid=? AND relative_path=?
@@ -68,7 +68,7 @@ def reset_status_for_missing_files(db_path, dst_roots):
     sys.stderr.flush()
 
 def get_pending_copies(db_path):
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT s.uid, s.relative_path, s.size, s.last_modified
@@ -79,7 +79,7 @@ def get_pending_copies(db_path):
         return cur.fetchall()
 
 def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO copy_status (uid, relative_path, status, last_copy_attempt, error_message)
@@ -117,7 +117,7 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
     if not pending:
         return
     checksums_on_disk = set()
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT uid, relative_path FROM destination_files
@@ -193,7 +193,7 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
             logging.info(f"Copy complete: {src_file} -> {dst_file} exists={dst_file.exists()} size={dst_file.stat().st_size if dst_file.exists() else 'N/A'}")
             sys.stderr.flush()
             if src_checksum == dst_checksum == checksum:
-                with sqlite3.connect(db_path) as conn:
+                with RobustSqliteConn(db_path).connect() as conn:
                     cur = conn.cursor()
                     cur.execute("""
                         INSERT INTO destination_files (uid, relative_path, size, last_modified)

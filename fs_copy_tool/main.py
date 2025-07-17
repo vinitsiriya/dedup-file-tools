@@ -7,11 +7,21 @@ def handle_add_to_destination_index_pool(args):
 File: fs-copy-tool/main.py
 Description: Main orchestration script for Non-Redundant Media File Copy Tool
 """
+
 import argparse
 import logging
+import sys
+import os
+log_level = None
+for i, arg in enumerate(sys.argv):
+    if arg == '--log-level' and i + 1 < len(sys.argv):
+        log_level = sys.argv[i + 1]
+        break
+from fs_copy_tool.utils.logging_config import setup_logging
+setup_logging(log_level=log_level)
 import os
 import sys
-import sqlite3
+from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
 from pathlib import Path
 from fs_copy_tool.db import init_db
 from fs_copy_tool.phases.analysis import analyze_volumes
@@ -41,7 +51,20 @@ def get_checksum_db_path(job_dir, checksum_db=None):
 
 # Centralized DB connection with attached checksum DB
 def connect_with_attached_checksum_db(main_db_path, checksum_db_path):
-    conn = sqlite3.connect(main_db_path)
+    import logging
+    from fs_copy_tool.db import init_checksum_db
+    import os
+    # Ensure attached checksum DB has correct schema
+    if not os.path.exists(checksum_db_path):
+        init_checksum_db(checksum_db_path)
+    else:
+        # Try to create missing tables/indexes if DB exists but is incomplete
+        try:
+            init_checksum_db(checksum_db_path)
+        except Exception as e:
+            logging.error(f"Failed to ensure schema in attached checksum DB: {checksum_db_path}\nError: {e}")
+            raise
+    conn = RobustSqliteConn(main_db_path).connect()
     # Attach checksum DB as 'checksumdb'
     conn.execute(f"ATTACH DATABASE '{checksum_db_path}' AS checksumdb")
     return conn
@@ -64,7 +87,7 @@ def add_file_to_db(db_path, file_path):
         sys.exit(1)
     try:
         stat = file.stat()
-        with sqlite3.connect(db_path) as conn:
+        with RobustSqliteConn(db_path).connect() as conn:
             cur = conn.cursor()
             cur.execute("""
                 INSERT INTO source_files (uid, relative_path, size, last_modified)
@@ -107,7 +130,7 @@ def add_source_to_db(db_path, src_dir):
                 logging.error(f"Error: Could not determine UID for {file}")
                 continue
             stat = file.stat()
-            with sqlite3.connect(db_path) as conn:
+            with RobustSqliteConn(db_path).connect() as conn:
                 cur = conn.cursor()
                 cur.execute("""
                     INSERT INTO source_files (uid, relative_path, size, last_modified)
@@ -138,7 +161,7 @@ def add_source_to_db(db_path, src_dir):
         logging.info(f"Batch add complete: {count} files added from {src_dir}")
 
 def list_files_in_db(db_path):
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("SELECT uid, relative_path, size, last_modified FROM source_files ORDER BY uid, relative_path")
         rows = cur.fetchall()
@@ -150,7 +173,7 @@ def remove_file_from_db(db_path, file_path):
     file = Path(file_path)
     mount_id = str(file.parent)
     rel = file.name
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM source_files WHERE uid=? AND relative_path=?", (mount_id, rel))
         conn.commit()
@@ -327,7 +350,7 @@ def handle_copy(args):
     from tqdm import tqdm
     import sqlite3
     def conn_factory():
-        return connect_with_attached_checksum_db(db_path, checksum_db_path)
+        return RobustSqliteConn(db_path).connect()
     checksum_cache = ChecksumCache(conn_factory, UidPathUtil())
     # Get all files in the destination pool
     with conn_factory() as conn:
@@ -361,7 +384,7 @@ def handle_verify(args):
     # Remove src and dst, just use db_path and stage
     if args.stage == 'shallow':
         shallow_verify_files(db_path, reverify=getattr(args, 'reverify', False))
-        with sqlite3.connect(db_path) as conn:
+        with RobustSqliteConn(db_path).connect() as conn:
             cur = conn.cursor()
             cur.execute('''
                 SELECT verify_status, COUNT(*) FROM verification_shallow_results
@@ -378,7 +401,7 @@ def handle_verify(args):
     else:
         deep_verify_files(db_path, reverify=getattr(args, 'reverify', False))
         error_count = 0
-        with sqlite3.connect(db_path) as conn:
+        with RobustSqliteConn(db_path).connect() as conn:
             cur = conn.cursor()
             cur.execute('''
                 SELECT verify_status, COUNT(*) FROM verification_deep_results
@@ -414,7 +437,7 @@ def handle_resume(args):
 
 def handle_status(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM copy_status WHERE status='done'")
         done = cur.fetchone()[0]
@@ -431,7 +454,7 @@ def handle_status(args):
 
 def handle_log(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         logging.info('Copied files (destination_files):')
         cur.execute("""
@@ -460,7 +483,7 @@ def handle_deep_verify(args):
 
 def handle_verify_status(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         logging.info('Shallow Verification Results:')
         cur.execute('''
@@ -475,7 +498,7 @@ def handle_verify_status(args):
 
 def handle_deep_verify_status(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         logging.info('Deep Verification Results:')
         cur.execute('''
@@ -514,7 +537,7 @@ def handle_checksum(args):
     init_db(db_path)
     uid_path = UidPathUtil()
     def conn_factory():
-        return connect_with_attached_checksum_db(db_path, checksum_db_path)
+        return RobustSqliteConn(checksum_db_path).connect()
     checksum_cache = ChecksumCache(conn_factory, uid_path)
     import sqlite3
     with sqlite3.connect(db_path) as conn:
@@ -523,13 +546,18 @@ def handle_checksum(args):
         rows = cur.fetchall()
     from tqdm import tqdm
     from concurrent.futures import ThreadPoolExecutor, as_completed
+    import logging
     def process_row(row):
         uid, rel_path, size, last_modified = row
         uid_path_obj = UidPath(uid, rel_path)
         file_path = uid_path.reconstruct_path(uid_path_obj)
+        logging.info(f"[handle_checksum] Processing: uid={uid}, rel_path={rel_path}, resolved_path={file_path}")
         if not file_path or not file_path.exists():
+            logging.info(f"[handle_checksum] File not found or does not exist: {file_path}")
             return None
+        logging.info(f"[handle_checksum] Calling get_or_compute_with_invalidation for {file_path}")
         checksum = checksum_cache.get_or_compute_with_invalidation(str(file_path))
+        logging.info(f"[handle_checksum] Checksum for {file_path}: {checksum}")
         return True if checksum else None
     with tqdm(total=len(rows), desc=f"Checksumming {args.table}") as pbar:
         with ThreadPoolExecutor(max_workers=args.threads) as executor:
@@ -543,7 +571,7 @@ def handle_import_checksums(args):
     checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     other_db_path = args.other_db
     # Validate schema of other_db
-    with sqlite3.connect(other_db_path) as conn:
+    with RobustSqliteConn(other_db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checksum_cache'")
         if not cur.fetchone():
@@ -553,6 +581,7 @@ def handle_import_checksums(args):
         cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
         rows = cur.fetchall()
     # Insert into attached checksum DB
+    logging.info(f"Rows to import from other DB: {rows}")
     conn = connect_with_attached_checksum_db(db_path, checksum_db_path)
     try:
         cur = conn.cursor()
@@ -562,6 +591,10 @@ def handle_import_checksums(args):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, row)
         conn.commit()
+        # Log all rows in checksum_cache after import
+        cur.execute("SELECT uid, relative_path, checksum FROM checksumdb.checksum_cache")
+        all_rows = cur.fetchall()
+        logging.info(f"All rows in main job's checksum_cache after import: {all_rows}")
     finally:
         conn.close()
     logging.info(f"Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")

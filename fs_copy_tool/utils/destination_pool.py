@@ -1,4 +1,4 @@
-import sqlite3
+from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
 from typing import Optional
 import time
 
@@ -18,7 +18,7 @@ class DestinationPoolIndex:
         if not uid:
             return
         now = int(time.time())
-        with sqlite3.connect(self.db_path) as conn:
+        with RobustSqliteConn(self.db_path).connect() as conn:
             cur = conn.cursor()
             cur.execute(
                 """
@@ -34,7 +34,7 @@ class DestinationPoolIndex:
             conn.commit()
 
     def exists(self, uid: str, rel_path: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with RobustSqliteConn(self.db_path).connect() as conn:
             cur = conn.cursor()
             cur.execute(
                 "SELECT 1 FROM destination_pool_files WHERE uid=? AND relative_path=? LIMIT 1",
@@ -43,7 +43,7 @@ class DestinationPoolIndex:
             return cur.fetchone() is not None
 
     def all_files(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with RobustSqliteConn(self.db_path).connect() as conn:
             cur = conn.cursor()
             cur.execute("SELECT uid, relative_path, size, last_modified FROM destination_pool_files")
             return cur.fetchall()

@@ -1,5 +1,5 @@
-CHECKSUM_DB_SCHEMA = """
-CREATE TABLE IF NOT EXISTS checksum_cache (
+CHECKSUM_DB_SCHEMA_ATTACHED = """
+CREATE TABLE IF NOT EXISTS checksumdb.checksum_cache (
     uid TEXT,
     relative_path TEXT,
     size INTEGER,
@@ -10,14 +10,14 @@ CREATE TABLE IF NOT EXISTS checksum_cache (
     is_valid INTEGER DEFAULT 1, -- 1=valid, 0=stale
     PRIMARY KEY (uid, relative_path)
 );
-CREATE INDEX IF NOT EXISTS idx_checksum_cache_uid_relpath ON checksum_cache(uid, relative_path);
-CREATE INDEX IF NOT EXISTS idx_checksum_cache_checksum_valid ON checksum_cache(checksum, is_valid);
+CREATE INDEX IF NOT EXISTS checksumdb.idx_checksum_cache_uid_relpath ON checksumdb.checksum_cache(uid, relative_path);
+CREATE INDEX IF NOT EXISTS checksumdb.idx_checksum_cache_checksum_valid ON checksumdb.checksum_cache(checksum, is_valid);
 """
 
 """
 db.py: SQLite schema management for Non-Redundant Media File Copy Tool
 """
-import sqlite3
+from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
 
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS source_files (
@@ -105,7 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_checksum_cache_checksum_valid ON checksum_cache(c
 
 
 def init_db(db_path):
-    conn = sqlite3.connect(db_path)
+    conn = RobustSqliteConn(db_path).connect()
     try:
         conn.executescript(SCHEMA)
         conn.commit()
@@ -113,7 +113,7 @@ def init_db(db_path):
         conn.close()
 
 def init_checksum_db(checksum_db_path):
-    conn = sqlite3.connect(checksum_db_path)
+    conn = RobustSqliteConn(checksum_db_path).connect()
     try:
         conn.executescript(CHECKSUM_DB_SCHEMA)
         conn.commit()

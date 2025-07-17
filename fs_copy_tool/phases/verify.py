@@ -11,7 +11,7 @@ def verify_files(db_path, stage='shallow', reverify=False):
     else:
         deep_verify_files(db_path, reverify=reverify)
 import logging
-import sqlite3
+from fs_copy_tool.utils.robust_sqlite import RobustSqliteConn
 import time
 from pathlib import Path
 from fs_copy_tool.utils.fileops import compute_sha256
@@ -33,10 +33,10 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
     def conn_factory():
         return connect_with_attached_checksum_db(db_path, checksum_db_path)
     if reverify:
-        with sqlite3.connect(db_path) as conn:
+        with RobustSqliteConn(db_path).connect() as conn:
             conn.execute("DELETE FROM verification_shallow_results")
             conn.commit()
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT s.uid, s.relative_path, s.size, s.last_modified
@@ -86,7 +86,7 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
         for f in tqdm(as_completed(futures), total=len(futures), desc="Shallow Verify", unit="file"):
             results.append(f.result())
     # Write all results in main thread
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.executemany("""
             INSERT OR REPLACE INTO verification_shallow_results (uid, relative_path, "exists", size_matched, last_modified_matched, expected_size, actual_size, expected_last_modified, actual_last_modified, verify_status, verify_error, timestamp)
@@ -110,10 +110,10 @@ def deep_verify_files(db_path, reverify=False, max_workers=8):
         return connect_with_attached_checksum_db(db_path, checksum_db_path)
     checksum_cache = ChecksumCache(conn_factory, uid_path)
     if reverify:
-        with sqlite3.connect(db_path) as conn:
+        with RobustSqliteConn(db_path).connect() as conn:
             conn.execute("DELETE FROM verification_deep_results")
             conn.commit()
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT s.uid, s.relative_path, s.size, s.last_modified
@@ -189,7 +189,7 @@ def deep_verify_files(db_path, reverify=False, max_workers=8):
         for f in tqdm(as_completed(futures), total=len(futures), desc="Deep Verify", unit="file"):
             results.append(f.result())
     # Write all results in main thread
-    with sqlite3.connect(db_path) as conn:
+    with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.executemany("""
             INSERT OR REPLACE INTO verification_deep_results (uid, relative_path, checksum_matched, expected_checksum, src_checksum, dst_checksum, verify_status, verify_error, timestamp)

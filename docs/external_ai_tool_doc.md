@@ -3,6 +3,11 @@
 ## Overview
 `fs-copy-tool` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
 
+## Architecture Note (2025-07)
+- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name <job-name>`.
+- The checksum cache database is always named `checksum-cache.db` in the job directory.
+- The tool will not operate on legacy `copytool.db` files; migrate or re-initialize jobs as needed.
+
 ## Mechanism & Workflow
 - The tool operates in phases: initialization, file addition, analysis, checksum calculation, copy, verification, and audit.
 - All state and progress are tracked in a dedicated SQLite database (one per job directory).
@@ -12,14 +17,14 @@
 - All operations, errors, and results are queryable and auditable via the database and CLI.
 
 ## Import Checksums Feature (2025-07-15: Current Implementation)
-The import checksums feature allows you to import file checksums from another compatible job database, enabling fast migration and verification across jobs.
+The import checksums feature allows you to import file checksums from another compatible job's checksum cache database, enabling fast migration and verification across jobs.
 
 - **Command:**
   ```
-  import-checksums --job-dir <path> --other-db <other_db_path>
+  import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db
   ```
 - **How it works:**
-  1. Specify the current job directory (`--job-dir`) and the path to another compatible SQLite database (`--other-db`).
+  1. Specify the current job directory (`--job-dir`), job name (`--job-name`), and the path to another compatible checksum cache database (`--other-db`).
   2. The tool reads the `checksum_cache` table from the other database (legacy table import is not supported).
   3. For each entry, it extracts:
      - `uid` (volume identifier)
@@ -28,16 +33,16 @@ The import checksums feature allows you to import file checksums from another co
      - `last_modified` (modification time)
      - `checksum` (SHA-256 hash)
      - `imported_at`, `last_validated`, `is_valid` (if present)
-  4. It inserts or updates these values into the `checksum_cache` table in the current job's database, along with an import timestamp and validation status.
+  4. It inserts or updates these values into the `checksum_cache` table in the current job's checksum cache database, along with an import timestamp and validation status.
   5. The `checksum_cache` table is used as a fallback for all copy and verification operations: if a file in the current job does not have a checksum in the main tables, the tool will look it up in the cache and use it if available and valid.
   6. The cache is indexed for fast lookup by checksum and (uid, relative_path).
   7. This process is robust and idempotent: repeated imports will not create duplicates, and only the latest valid checksum is used.
 
 - **Example usage:**
   ```
-  python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --other-db <other_job_dir>/copytool.db
+  python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db
   ```
-  This will import all checksums from the `checksum_cache` table in the other job's database into the current job's `checksum_cache`.
+  This will import all checksums from the `checksum_cache` table in the other job's checksum cache database into the current job's `checksum_cache`.
 
 - **Benefits:**
   - Avoids recomputing checksums for files that have not changed.
@@ -46,7 +51,7 @@ The import checksums feature allows you to import file checksums from another co
 
 ## Database Schema
 
-- **checksum_cache**
+- **checksum_cache** (in `checksum-cache.db`)
   - `uid` TEXT
   - `relative_path` TEXT
   - `size` INTEGER
@@ -57,7 +62,7 @@ The import checksums feature allows you to import file checksums from another co
   - `is_valid` INTEGER DEFAULT 1
   - PRIMARY KEY (`uid`, `relative_path`)
 
-(Other tables: `source_files`, `destination_files`, `verification_shallow_results`, `verification_deep_results` are also present for job state and verification.)
+(Other tables: `source_files`, `destination_files`, `verification_shallow_results`, `verification_deep_results` are present in `<job-name>.db` for job state and verification.)
 
 ## Key Features
 - Block-wise (4KB) file copying with SHA-256 checksums
@@ -79,112 +84,112 @@ The import checksums feature allows you to import file checksums from another co
 5. **Copy** only non-duplicate files from source to destination. *Before copying, the tool updates and validates all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.*
 6. **Resume** interrupted or failed jobs safely.
 7. **Verify** and audit all copy operations (shallow and deep verification).
-8. **Import checksums** from another compatible database if needed (from `checksum_cache` only).
+8. **Import checksums** from another compatible checksum cache database if needed (from `checksum_cache` only).
 
 
 ## CLI Usage
 
 All commands are run via Python (use the virtual environment if available):
 ```
-python fs_copy_tool/main.py <command> [options]
+python fs_copy_tool/main.py <command> --job-dir <job_dir> --job-name <job_name> [other options]
 ```
 Or, if installed as a package:
 ```
-fs-copy-tool <command> [options]
+fs-copy-tool <command> --job-dir <job_dir> --job-name <job_name> [other options]
 ```
 
 ### Main Commands & Options
-init --job-dir <path>
-Initialize a new job directory (creates database and state files).
 
-import-checksums --job-dir <path> --other-db <other_db_path>
-Import checksums from another compatible job database.
+- `init --job-dir <job_dir> --job-name <job_name>`
+  - Initialize a new job directory (creates `<job-name>.db` and `checksum-cache.db`).
 
-analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
-Analyze source and/or destination volumes to gather file metadata.
+- `import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db`
+  - Import checksums from another compatible job's checksum cache database.
 
-checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]
-Compute or update checksums for files in the specified table.
+- `analyze --job-dir <job_dir> --job-name <job_name> [--src <src_dir> ...] [--dst <dst_dir> ...]`
+  - Analyze source and/or destination volumes to gather file metadata.
 
-copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]
-Copy files from source to destination, skipping duplicates and resuming incomplete jobs.
---resume is always enabled by default and can be omitted.
-Before copying, all destination pool checksums are updated and validated with a progress bar to ensure deduplication is accurate and up to date.
+- `checksum --job-dir <job_dir> --job-name <job_name> --table <source_files|destination_files> [--threads N] [--no-progress]`
+  - Compute or update checksums for files in the specified table.
 
-resume --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]
-Resume interrupted or failed copy operations.
+- `copy --job-dir <job_dir> --job-name <job_name> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]`
+  - Copy files from source to destination, skipping duplicates and resuming incomplete jobs.
+  - `--resume` is always enabled by default and can be omitted.
+  - Before copying, all destination pool checksums are updated and validated with a progress bar to ensure deduplication is accurate and up to date.
 
-status --job-dir <path>
-Show job progress and statistics.
+- `resume --job-dir <job_dir> --job-name <job_name> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]`
+  - Resume interrupted or failed copy operations.
 
-log --job-dir <path>
-Show job log or audit trail.
+- `status --job-dir <job_dir> --job-name <job_name>`
+  - Show job progress and statistics.
 
-verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--stage <shallow|deep>]
-Verify copied files. Use --stage shallow for basic attribute checks, or --stage deep for checksum comparison.
+- `log --job-dir <job_dir> --job-name <job_name>`
+  - Show job log or audit trail.
 
-deep-verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]
-Perform deep verification (checksum comparison) between source and destination.
+- `verify --job-dir <job_dir> --job-name <job_name> [--src <src_dir> ...] [--dst <dst_dir> ...] [--stage <shallow|deep>]`
+  - Verify copied files. Use `--stage shallow` for basic attribute checks, or `--stage deep` for checksum comparison.
 
-verify-status --job-dir <path>
-Show a summary of the latest shallow verification results for each file.
+- `deep-verify --job-dir <job_dir> --job-name <job_name> [--src <src_dir> ...] [--dst <dst_dir> ...]`
+  - Perform deep verification (checksum comparison) between source and destination.
 
-deep-verify-status --job-dir <path>
-Show a summary of the latest deep verification results for each file.
+- `verify-status --job-dir <job_dir> --job-name <job_name>`
+  - Show a summary of the latest shallow verification results for each file.
 
-verify-status-summary --job-dir <path>
-Show a short summary of shallow verification results.
+- `deep-verify-status --job-dir <job_dir> --job-name <job_name>`
+  - Show a summary of the latest deep verification results for each file.
 
-verify-status-full --job-dir <path>
-Show all shallow verification results (full history).
+- `verify-status-summary --job-dir <job_dir> --job-name <job_name>`
+  - Show a short summary of shallow verification results.
 
-deep-verify-status-summary --job-dir <path>
-Show a short summary of deep verification results.
+- `verify-status-full --job-dir <job_dir> --job-name <job_name>`
+  - Show all shallow verification results (full history).
 
-deep-verify-status-full --job-dir <path>
-Show all deep verification results (full history).
+- `deep-verify-status-summary --job-dir <job_dir> --job-name <job_name>`
+  - Show a short summary of deep verification results.
 
-add-file --job-dir <path> --file <file_path>
-Add a single file to the job database.
+- `deep-verify-status-full --job-dir <job_dir> --job-name <job_name>`
+  - Show all deep verification results (full history).
 
-add-source --job-dir <path> --src <src_dir>
-Recursively add all files from a directory to the job database.
-(Uses batching and multithreading for fast file addition; progress bar is shown for large directories.)
+- `add-file --job-dir <job_dir> --job-name <job_name> --file <file_path>`
+  - Add a single file to the job database.
 
-add-to-destination-index-pool --job-dir <path> --dst <dst_dir>
-Scan and add/update all files in the destination pool index.
+- `add-source --job-dir <job_dir> --job-name <job_name> --src <src_dir>`
+  - Recursively add all files from a directory to the job database.
+  - (Uses batching and multithreading for fast file addition; progress bar is shown for large directories.)
 
-list-files --job-dir <path>
-List all files currently in the job database.
+- `add-to-destination-index-pool --job-dir <job_dir> --job-name <job_name> --dst <dst_dir>`
+  - Scan and add/update all files in the destination pool index.
 
-remove-file --job-dir <path> --file <file_path>
-Remove a file from the job database.
+- `list-files --job-dir <job_dir> --job-name <job_name>`
+  - List all files currently in the job database.
 
-summary --job-dir <path>
-Print a summary of the job, including what has happened, where the logs are, and generate a CSV report (summary_report.csv) of all files with errors or not done.
+- `remove-file --job-dir <job_dir> --job-name <job_name> --file <file_path>`
+  - Remove a file from the job database.
 
-Notes:
+- `summary --job-dir <job_dir> --job-name <job_name>`
+  - Print a summary of the job, including what has happened, where the logs are, and generate a CSV report (summary_report.csv) of all files with errors or not done.
 
-All commands are run via Python (use the virtual environment if available):
-Or, if installed as a package:
-For verification, always use --stage shallow or --stage deep (not --phase).
-The add-source command is optimized for large datasets using batching and multithreading, and will show a progress bar for visibility.
-All operations are resumable, auditable, and robust against interruption.
+**Notes:**
+- All commands require both `--job-dir <job_dir>` and `--job-name <job_name>`.
+- The checksum cache database is always `checksum-cache.db` in the job directory.
+- For verification, always use `--stage shallow` or `--stage deep` (not `--phase`).
+- The add-source command is optimized for large datasets using batching and multithreading, and will show a progress bar for visibility.
+- All operations are resumable, auditable, and robust against interruption.
 
 ### Example Workflow
 ```
 pip install -r requirements.txt
-python fs_copy_tool/main.py init --job-dir <job_dir>
-python fs_copy_tool/main.py add-source --job-dir <job_dir> --src <SRC_ROOT>
-python fs_copy_tool/main.py analyze --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py checksum --job-dir <job_dir> --table source_files
-python fs_copy_tool/main.py checksum --job-dir <job_dir> --table destination_files
-python fs_copy_tool/main.py copy --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py status --job-dir <job_dir>
-python fs_copy_tool/main.py verify --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py deep-verify --job-dir <job_dir> --src <SRC_ROOT> --dst <DST_ROOT>
-python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --other-db <other_job_dir>/copytool.db
-python fs_copy_tool/main.py summary --job-dir <job_dir>
+python fs_copy_tool/main.py init --job-dir <job_dir> --job-name <job_name>
+python fs_copy_tool/main.py add-source --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT>
+python fs_copy_tool/main.py analyze --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py checksum --job-dir <job_dir> --job-name <job_name> --table source_files
+python fs_copy_tool/main.py checksum --job-dir <job_dir> --job-name <job_name> --table destination_files
+python fs_copy_tool/main.py copy --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py status --job-dir <job_dir> --job-name <job_name>
+python fs_copy_tool/main.py verify --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py deep-verify --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT>
+python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db
+python fs_copy_tool/main.py summary --job-dir <job_dir> --job-name <job_name>
 ```
 
 ## Edge Cases & Robustness
@@ -213,7 +218,3 @@ python fs_copy_tool/main.py summary --job-dir <job_dir>
 
 ## License
 MIT License
-
-## Architecture Note (2025-07)
-- All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
-- The checksum cache database is always named `checksum-cache.db` in the job directory.
