@@ -193,7 +193,7 @@ def parse_args(args=None):
     parser_one_shot.add_argument('--job-name', required=True, help='Name of the job (database file will be <job-name>.db)')
     parser_one_shot.add_argument('--src', nargs='+', required=True, help='Source volume root(s)')
     parser_one_shot.add_argument('--dst', nargs='+', required=True, help='Destination volume root(s)')
-    parser_one_shot.add_argument('--log-level', default='INFO', help='Set logging level (default: INFO)')
+    parser_one_shot.add_argument('--log-level', default='WARNING', help='Set logging level (default: WARNING)')
     parser_one_shot.add_argument('--threads', type=int, default=4, help='Number of threads for parallel operations (default: 4)')
     parser_one_shot.add_argument('--no-progress', action='store_true', help='Disable progress bars')
     parser_one_shot.add_argument('--resume', action='store_true', default=True, help='Resume incomplete jobs (default: True for copy phase)')

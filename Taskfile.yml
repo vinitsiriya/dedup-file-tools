@@ -25,10 +25,16 @@ tasks:
     cmds:
       - python setup.py sdist bdist_wheel
   install:
-    desc: Install the package in editable mode using pipx
+    desc: Install the package in editable mode using pip
     cmds:
-      - pipx install -e .
+      - pip install -e .
   install-dev:
     desc: Install all dev dependencies (editable mode)
     cmds:
       - pip install -e .[dev]
+      
+  reinstall:
+    desc: Uninstall and then reinstall the package in editable mode using pip
+    cmds:
+      - pip uninstall -y fs-copy-tool || true
+      - pip install -e .

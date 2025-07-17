@@ -143,15 +143,21 @@ python fs_copy_tool/main.py generate-config
 Then use the generated config with any command supporting `-c`.
 
 
+
 **One-shot (full workflow in one command):**
 ```
-python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
+python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> --dst-index-pool <POOL_PATH> [options]
 ```
 Or, using a YAML config file for all options:
 ```
-python fs_copy_tool/main.py one-shot -c config.yaml
+python fs_copy_tool/main.py one-shot -c config.yaml --dst-index-pool <POOL_PATH>
 ```
-*Runs all steps below in order, stops on error, prints "Done" on success. All CLI options can be set in the YAML file; CLI args override YAML values.*
+*Runs all steps below in order, including the destination index pool step, stops on error, prints "Done" on success. All CLI options can be set in the YAML file; CLI args override YAML values.*
+
+**About `--dst-index-pool` / `--destination-index-pool`:**
+- Use `--dst-index-pool <POOL_PATH>` (or `--destination-index-pool <POOL_PATH>`) to specify a destination index pool for deduplication or multi-destination workflows.
+- This is used in the "Add to Destination Index Pool" step of the workflow.
+- If not provided, the first `--dst` value is used as the pool by default.
 
 **Step-by-step:**
 1. **Initialize a job directory** to store all state and logs.
@@ -187,6 +193,7 @@ Or, if installed as a package:
 ```
 fs-copy-tool <command> -c config.yaml
 ```
+
 
 
 ### Main Commands & Options
@@ -258,6 +265,7 @@ fs-copy-tool <command> -c config.yaml
 
 - `add-to-destination-index-pool --job-dir <job_dir> --job-name <job_name> --dst <dst_dir>`
   - Scan and add/update all files in the destination pool index.
+  - You can also use `--dst-index-pool <POOL_PATH>` or `--destination-index-pool <POOL_PATH>` to specify the pool explicitly in one-shot and related commands.
 
 - `list-files --job-dir <job_dir> --job-name <job_name>`
   - List all files currently in the job database.
@@ -278,19 +286,26 @@ fs-copy-tool <command> -c config.yaml
 
 ### Example Workflow
 
+
 ### Example Workflow
 1. **Generate a config file interactively:**
    ```
    python fs_copy_tool/main.py generate-config
    ```
-2. **Run the full workflow in one step:**
+2. **Run the full workflow in one step (with destination index pool):**
    ```
-   python fs_copy_tool/main.py one-shot -c config.yaml
+   python fs_copy_tool/main.py one-shot -c config.yaml --dst-index-pool /mnt/pool
    ```
+   Or, without a config file:
+   ```
+   python fs_copy_tool/main.py one-shot --job-dir jobs/job1 --job-name job1 --src /mnt/src --dst /mnt/dst --dst-index-pool /mnt/pool --threads 4 --log-level DEBUG
+   ```
+   If `--dst-index-pool` is not specified, the first `--dst` value is used as the pool by default.
 3. **Or step-by-step:**
    ```
    python fs_copy_tool/main.py init -c config.yaml
    python fs_copy_tool/main.py add-source -c config.yaml
+   python fs_copy_tool/main.py add-to-destination-index-pool -c config.yaml --dst-index-pool /mnt/pool
    python fs_copy_tool/main.py analyze -c config.yaml
    python fs_copy_tool/main.py checksum -c config.yaml
    python fs_copy_tool/main.py copy -c config.yaml

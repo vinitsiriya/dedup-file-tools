@@ -4,4 +4,6 @@ black
 mypy
 wmi
 tqdm
+pyyaml
+# Required for interactive config generator (generate-config command)
 # No additional dependencies required for stateful CLI features (add-file, add-source, list-files, remove-file)
