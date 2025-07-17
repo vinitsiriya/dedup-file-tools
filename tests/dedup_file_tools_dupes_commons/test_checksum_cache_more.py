@@ -1,10 +1,6 @@
-import os
 import sqlite3
-import tempfile
-import pytest
-from pathlib import Path
-from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 
 def setup_test_db_with_pool(tmp_path):
     db_path = tmp_path / "test.db"

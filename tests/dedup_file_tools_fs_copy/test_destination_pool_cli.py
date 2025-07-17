@@ -1,11 +1,7 @@
-import os
 import sqlite3
-import tempfile
-import shutil
-from pathlib import Path
 from dedup_file_tools_fs_copy.utils.destination_pool_cli import add_to_destination_index_pool
 from dedup_file_tools_fs_copy.utils.destination_pool import DestinationPoolIndex
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 
 def test_add_to_destination_index_pool(tmp_path):
     db_path = tmp_path / "test.db"

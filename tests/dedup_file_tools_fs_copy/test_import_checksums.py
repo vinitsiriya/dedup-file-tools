@@ -1,8 +1,6 @@
-import tempfile
 import sqlite3
-from pathlib import Path
 from dedup_file_tools_fs_copy import main
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 import pytest
 
 def test_import_checksums_from_other_db(tmp_path):

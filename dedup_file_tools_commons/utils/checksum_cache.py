@@ -1,14 +1,8 @@
-from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
-from typing import Optional
-from pathlib import Path
-from dedup_file_tools_fs_copy.utils.fileops import compute_sha256
-import time
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 
-   
-import sqlite3
 from typing import Optional
 from pathlib import Path
-from dedup_file_tools_fs_copy.utils.fileops import compute_sha256
+from dedup_file_tools_commons.utils.fileops import compute_sha256
 import time
 
 
@@ -140,7 +134,7 @@ class ChecksumCache:
             return False
         uid, rel_path, cached_size, cached_mtime, is_valid = row
         # Reconstruct the file path using uid_path
-        from dedup_file_tools_fs_copy.utils.uidpath import UidPath
+        from dedup_file_tools_commons.utils.uidpath import UidPath
         uid_path_obj = UidPath(uid, rel_path)
         file_path = self.uid_path.reconstruct_path(uid_path_obj)
         if not file_path or not Path(file_path).exists():

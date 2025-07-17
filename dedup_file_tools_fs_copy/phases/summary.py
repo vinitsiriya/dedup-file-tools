@@ -1,8 +1,25 @@
+
+"""
+File: dedup_file_tools_fs_copy/phases/summary.py
+Phase: Summary
+
+Description:
+    Implements the summary phase for the Non-Redundant Media File Copy Tool. This module generates a summary report after the copy phase, including a CSV file listing files that encountered errors or were not copied. It also prints job and log file locations for user reference.
+
+Key Features:
+    - Summarizes the results of the copy operation
+    - Reports the location of log files and job directory
+    - Generates a CSV report of files with errors or incomplete status
+    - Designed for use in both CLI and agent-driven workflows
+
+Usage:
+    Invoked as the final phase in the workflow to provide a clear summary and error report for auditing and troubleshooting.
+"""
+
 import os
 import csv
-from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
-import logging
-from pathlib import Path
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
 
 def summary_phase(db_path, job_dir):
     """

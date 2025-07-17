@@ -1,11 +1,19 @@
 """
-File: fs-copy-tool/phases/analysis.py
-Description: Analysis phase logic (scanning and metadata extraction)
+File: dedup_file_tools_fs_copy/phases/analysis.py
+
+Analysis Phase Module
+---------------------
+This module implements the analysis phase for the deduplication/copy tool. It is responsible for:
+- Scanning a given volume or directory recursively for all files.
+- Extracting and persisting file metadata (UID, relative path, size, last modified time) to the database.
+- Using UidPath abstraction for robust, cross-platform file identification.
+- Providing progress feedback via tqdm.
+
+All file metadata is stored in the specified table (e.g., source_files or destination_files) for later processing in copy, verify, and summary phases.
 """
 import logging
-from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
-from dedup_file_tools_fs_copy.utils.fileops import compute_sha256
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 from pathlib import Path
 import os
 from tqdm import tqdm

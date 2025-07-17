@@ -1,8 +1,6 @@
-import os
-import sqlite3
 import logging
 from pathlib import Path
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 from .destination_pool import DestinationPoolIndex
 
 def add_to_destination_index_pool(db_path, dst_root):

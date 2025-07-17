@@ -1,39 +1,57 @@
+"""
+File: dedup_file_tools_fs_copy/main.py
+Main Orchestration & CLI Entry Point
+
+Description:
+    This is the main orchestration module and CLI entry point for the Non-Redundant Media File Copy Tool. It parses command-line arguments, initializes job directories and databases, and coordinates the execution of all workflow phases: analysis, checksum, copy, verify, and summary. It provides a robust, resumable, and auditable workflow for deduplicated file copying, supporting both one-shot and stepwise operation modes.
+
+Key Features:
+    - CLI interface with subcommands for each workflow phase and utility
+    - One-shot mode for full end-to-end operation
+    - Modular handlers for each phase (init, analyze, checksum, copy, verify, summary, etc.)
+    - Database and checksum cache management
+    - Logging and progress reporting
+    - Designed for both interactive and automated/agent-driven use
+
+Usage:
+    Run as a standalone script or module to perform deduplicated file copy operations. Supports both full workflow and individual phase execution via CLI subcommands.
+"""
+from dedup_file_tools_commons.db import init_checksum_db
+
+
 def handle_add_to_destination_index_pool(args):
     from dedup_file_tools_fs_copy.utils.destination_pool_cli import add_to_destination_index_pool
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     add_to_destination_index_pool(db_path, args.dst)
     return 0
-"""
-File: fs-copy-tool/main.py
-Description: Main orchestration script for Non-Redundant Media File Copy Tool
-"""
+
 
 import argparse
-from dedup_file_tools_fs_copy.utils.config_loader import load_yaml_config, merge_config_with_args
 import logging
 import sys
-import os
+
 log_level = None
 for i, arg in enumerate(sys.argv):
     if arg == '--log-level' and i + 1 < len(sys.argv):
         log_level = sys.argv[i + 1]
         break
-from dedup_file_tools_fs_copy.utils.logging_config import setup_logging
+from dedup_file_tools_commons.utils.logging_config import setup_logging
 setup_logging(log_level=log_level)
 import os
 import sys
-from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from pathlib import Path
 from dedup_file_tools_fs_copy.db import init_db
 from dedup_file_tools_fs_copy.phases.analysis import analyze_volumes
 from dedup_file_tools_fs_copy.phases.copy import copy_files
 from dedup_file_tools_fs_copy.phases.verify import shallow_verify_files, deep_verify_files
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil, UidPath
-from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
-from dedup_file_tools_fs_copy.utils.logging_config import setup_logging
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.logging_config import setup_logging
 
 def init_job_dir(job_dir, job_name, checksum_db=None):
-    from dedup_file_tools_fs_copy.db import init_db, init_checksum_db
+    from dedup_file_tools_fs_copy.db import init_db
+    from dedup_file_tools_commons.db import init_checksum_db
     os.makedirs(job_dir, exist_ok=True)
     db_path = os.path.join(job_dir, f'{job_name}.db')
     checksum_db_path = checksum_db or os.path.join(job_dir, 'checksum-cache.db')
@@ -42,40 +60,19 @@ def init_job_dir(job_dir, job_name, checksum_db=None):
         init_checksum_db(checksum_db_path)
     logging.info(f"Initialized job directory at {job_dir} with database {db_path} and checksum DB {checksum_db_path}")
 
-def get_db_path_from_job_dir(job_dir, job_name):
-    return os.path.join(job_dir, f'{job_name}.db')
 
-def get_checksum_db_path(job_dir, checksum_db=None):
-    if checksum_db:
-        return checksum_db
-    return os.path.join(job_dir, 'checksum-cache.db')
+# Path utilities from commons
+from dedup_file_tools_commons.utils.paths import get_db_path_from_job_dir, get_checksum_db_path
 
 # Centralized DB connection with attached checksum DB
-def connect_with_attached_checksum_db(main_db_path, checksum_db_path):
-    import logging
-    from dedup_file_tools_fs_copy.db import init_checksum_db
-    import os
-    # Ensure attached checksum DB has correct schema
-    if not os.path.exists(checksum_db_path):
-        init_checksum_db(checksum_db_path)
-    else:
-        # Try to create missing tables/indexes if DB exists but is incomplete
-        try:
-            init_checksum_db(checksum_db_path)
-        except Exception as e:
-            logging.error(f"Failed to ensure schema in attached checksum DB: {checksum_db_path}\nError: {e}")
-            raise
-    conn = RobustSqliteConn(main_db_path).connect()
-    # Attach checksum DB as 'checksumdb'
-    conn.execute(f"ATTACH DATABASE '{checksum_db_path}' AS checksumdb")
-    return conn
+from dedup_file_tools_commons.utils.db_utils import connect_with_attached_checksum_db
 
 
 
 def add_file_to_db(db_path, file_path):
     from pathlib import Path
     import sys
-    from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+    from dedup_file_tools_commons.utils.uidpath import UidPathUtil
     file = Path(file_path)
     if not file.is_file():
         logging.error(f"Error: {file_path} is not a file.")
@@ -348,7 +345,7 @@ def main(args=None):
     parsed_args = parse_args(args)
     # Always set up logging with job_dir if available
     job_dir = getattr(parsed_args, 'job_dir', None)
-    from dedup_file_tools_fs_copy.utils.logging_config import setup_logging
+    from dedup_file_tools_commons.utils.logging_config import setup_logging
     setup_logging(job_dir)
     if getattr(parsed_args, 'command', None) == 'generate-config':
         from dedup_file_tools_fs_copy.utils.interactive_config import interactive_config_generator
@@ -380,9 +377,8 @@ def handle_copy(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     init_db(db_path)
-    from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
+    from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
     from tqdm import tqdm
-    import sqlite3
     def conn_factory():
         return RobustSqliteConn(db_path).connect()
     checksum_cache = ChecksumCache(conn_factory, UidPathUtil())

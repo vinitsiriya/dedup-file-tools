@@ -1,5 +1,4 @@
-from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
-from typing import Optional
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 import time
 
 class DestinationPoolIndex:

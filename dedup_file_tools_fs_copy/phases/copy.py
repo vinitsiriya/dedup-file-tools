@@ -1,17 +1,24 @@
 """
-File: fs-copy-tool/phases/copy.py
-Description: Copy phase logic for Non-Redundant Media File Copy Tool
+File: dedup_file_tools_fs_copy/phases/copy.py
+Phase: Copy
+
+Description:
+    Implements the copy phase for the Non-Redundant Media File Copy Tool. This module is responsible for orchestrating the copying of files from source to destination directories, ensuring deduplication, resumability, and robust error handling. It interacts with the database to track copy status, uses checksums to avoid redundant copies, and supports multi-threaded execution for performance.
+
+Key Features:
+    - Resets status for files missing from destination but marked as done
+    - Identifies pending or failed copy tasks from the database
+    - Performs deduplicated, resumable file copy operations with checksum verification
+    - Updates copy status and destination file records in the database
+    - Supports multi-threaded copying with progress reporting
+
+Usage:
+    This module is invoked as part of the phase-based workflow, typically by the main orchestration logic. It expects the database to be initialized and source/destination roots to be provided. Designed for use in both CLI and agent-driven workflows.
 """
-import logging
-from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
-from pathlib import Path
-from dedup_file_tools_fs_copy.utils.fileops import copy_file, verify_file
-from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil, UidPath
-from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from threading import Lock
-import time
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.fileops import copy_file
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
 import threading
 import logging
 
@@ -19,10 +26,8 @@ def reset_status_for_missing_files(db_path, dst_roots):
     """
     For any file marked as done but missing from all destination roots, reset its status to 'pending'.
     """
-    import os
     from pathlib import Path
     import sys
-    import sqlite3
     with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -92,7 +97,6 @@ def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
         conn.commit()
 
 def copy_files(db_path, src_roots, dst_roots, threads=4):
-    import os
     import sys
     import time
     from pathlib import Path

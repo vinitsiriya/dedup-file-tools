@@ -1,9 +1,20 @@
 # Project Workflow Protocol
 
+
 This directory contains the canonical workflow protocol documentation for the project. The structure is as follows:
 
 - `proposal/requirement/` — Requirement proposals (one file per proposal)
 - `proposal/strategy/` — Implementation strategies (one file per strategy)
+  - The `strategy` directory may also contain additional supporting files as needed, such as:
+    - `agents-protocol.md` (a very important file: all strategy, protocol, or instructions specifically for agents must be clearly recorded here; this file can tweak agent behavior and protocols throughout the entire user story and implementation process)
+    - Implementation guidelines
+    - Agent suggestions
+    - Notes
+    - Points to be noticed
+    - Code review notes
+    - Audit notes
+  - All strategy, protocol, or instructions for agents must be documented in `agents-protocol.md` within the strategy directory.
+  - These files should be created as per requirement to support implementation, review, audit, or agent collaboration.
 - `proposal/status.md` — Status tracking for all proposals
 - `user-story/story.md` — User stories
 - `user-story/task.md` — Tasks derived from user stories

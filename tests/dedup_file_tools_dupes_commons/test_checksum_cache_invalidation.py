@@ -1,8 +1,6 @@
 import sqlite3
-import pytest
-from pathlib import Path
-from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 
 def setup_test_db(tmp_path):
     db_path = tmp_path / "test.db"
@@ -60,7 +58,6 @@ def test_get_or_compute_with_invalidation_file_changed(tmp_path):
     assert checksum1 != checksum2
 
 def test_get_or_compute_with_invalidation_file_metadata_changed(tmp_path):
-    import time
     import os
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()

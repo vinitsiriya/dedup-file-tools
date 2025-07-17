@@ -11,13 +11,11 @@ def verify_files(db_path, stage='shallow', reverify=False):
     else:
         deep_verify_files(db_path, reverify=reverify)
 import logging
-from dedup_file_tools_fs_copy.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 import time
-from pathlib import Path
-from dedup_file_tools_fs_copy.utils.fileops import compute_sha256
-from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
-from dedup_file_tools_fs_copy.utils.uidpath import UidPath, UidPathUtil
-from tqdm import tqdm
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPath, UidPathUtil
+
 
 def shallow_verify_files(db_path, reverify=False, max_workers=8):
     """Shallow verification: check file existence, size, and last modified time. Now multithreaded."""

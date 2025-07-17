@@ -1,11 +1,7 @@
 import os
 import sqlite3
-import tempfile
-import shutil
-import pytest
-from pathlib import Path
-from dedup_file_tools_fs_copy.utils.checksum_cache import ChecksumCache
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 import time
 
 def setup_destination_pool_db(tmp_path):

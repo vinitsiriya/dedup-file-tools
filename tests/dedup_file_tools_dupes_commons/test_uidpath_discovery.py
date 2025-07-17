@@ -3,11 +3,8 @@ def test_pytest_discovery():
     print('Pytest discovery works!')
 
 import os
-import sqlite3
-import tempfile
-import pytest
-from pathlib import Path
-from dedup_file_tools_fs_copy.utils.uidpath import UidPathUtil, UidPath
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+
 
 def test_convert_and_reconstruct(tmp_path):
     uid_path = UidPathUtil()
