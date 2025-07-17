@@ -12,7 +12,18 @@ All commands are run via the project's virtual environment Python:
 .venv\Scripts\python.exe fs_copy_tool/main.py <command> [options]
 ```
 
+
 You can also provide a YAML configuration file for any command using the `-c <config.yaml>` or `--config <config.yaml>` option. All CLI options can be specified as YAML keys. CLI arguments always override YAML config values if both are provided.
+
+---
+
+## Interactive Config Generation
+
+To generate a YAML config file interactively, run:
+```
+.venv\Scripts\python.exe fs_copy_tool/main.py generate-config
+```
+You will be prompted for all required fields. The resulting YAML file can be used with the `-c` option for any command.
 
 **Example:**
 ```
@@ -20,7 +31,14 @@ You can also provide a YAML configuration file for any command using the `-c <co
 ```
 
 
+
 ## Commands
+
+### generate-config (Interactive Config Generator)
+```
+generate-config
+```
+Launches an interactive prompt to create a YAML config file for use with `-c`.
 
 ### one-shot (Full Workflow in One Command)
 ```

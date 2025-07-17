@@ -32,6 +32,7 @@ pip install -r requirements.txt
 
 
 
+
 ### 2. One-Shot Workflow (Recommended)
 Run the entire workflow (init, import, add-source, analyze, checksum, copy, verify, summary) in a single command:
 ```
@@ -42,6 +43,13 @@ Or, use a YAML config file for all options:
 python -m fs_copy_tool.main one-shot -c config.yaml
 ```
 *All CLI options can be set in the YAML file. CLI args override YAML values. See CLI docs for YAML format and details.*
+
+#### Generate a Config File Interactively
+To create a YAML config file interactively, run:
+```
+python -m fs_copy_tool generate-config
+```
+Follow the prompts to generate a config file for use with `-c`.
 
 **If any step fails, the workflow will stop immediately and print an error. On success, "Done" is printed.**
 
@@ -114,7 +122,9 @@ python -m fs_copy_tool.main import-checksums --job-dir .copy-task --other-db <OT
 
 ---
 
+
 ## CLI Commands
+- `generate-config` — Interactively generate a YAML config file for use with `-c`
 - `init --job-dir <path>` — Create and initialize a job directory
 - `import-checksums --job-dir <path> --other-db <other_db_path>` — Import checksums from another job's checksum_cache table
 - `analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]` — Scan source/destination and update the database

@@ -184,6 +184,9 @@ def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Non-Redundant Media File Copy Tool")
     parser.add_argument('-c', '--config', help='Path to YAML configuration file', default=None)
     subparsers = parser.add_subparsers(dest='command')
+    # Interactive config generator command
+    parser_generate_config = subparsers.add_parser('generate-config', help='Interactively generate a YAML config file for use with -c')
+
     # One-shot command (must be after subparsers is defined)
     parser_one_shot = subparsers.add_parser('one-shot', help='Run the full workflow (init, import, add-source, add-to-destination-index-pool, analyze, checksum, copy, verify, summary) in one command')
     parser_one_shot.add_argument('--job-dir', required=True, help='Path to job directory')
@@ -347,6 +350,10 @@ def main(args=None):
     job_dir = getattr(parsed_args, 'job_dir', None)
     from fs_copy_tool.utils.logging_config import setup_logging
     setup_logging(job_dir)
+    if getattr(parsed_args, 'command', None) == 'generate-config':
+        from fs_copy_tool.utils.interactive_config import interactive_config_generator
+        interactive_config_generator()
+        return 0
     return run_main_command(parsed_args)
 
 
