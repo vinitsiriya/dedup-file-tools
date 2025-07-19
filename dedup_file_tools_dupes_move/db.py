@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS dedup_files_pool (
     last_modified INTEGER,
     checksum TEXT,
     scanned_at INTEGER,
+    pool_base_path TEXT,
     PRIMARY KEY (uid, relative_path)
 );
 CREATE INDEX IF NOT EXISTS idx_dedup_files_pool_checksum ON dedup_files_pool(checksum);
@@ -59,11 +60,18 @@ CREATE TABLE IF NOT EXISTS dedup_group_summary (
 );
 """
 
+
 def init_db(db_path):
     conn = RobustSqliteConn(db_path).connect()
     try:
         conn.executescript(DEDUPE_DB_SCHEMA)
-        conn.commit()
+        # Migration: add pool_base_path if missing
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(dedup_files_pool);")
+        columns = [row[1] for row in cur.fetchall()]
+        if 'pool_base_path' not in columns:
+            cur.execute("ALTER TABLE dedup_files_pool ADD COLUMN pool_base_path TEXT;")
+            conn.commit()
     finally:
         conn.close()
 

@@ -17,8 +17,21 @@ def move_duplicates(db_path, dupes_folder, removal_folder, threads=4):
     from collections import deque
     def move_one(args):
         uid, rel_path, checksum, status = args
+        # Query pool_base_path for this file
+        with RobustSqliteConn(db_path).connect() as conn3:
+            cur3 = conn3.cursor()
+            cur3.execute("SELECT pool_base_path FROM dedup_files_pool WHERE uid=? AND relative_path=?", (uid, rel_path))
+            row = cur3.fetchone()
+            if not row or not row[0]:
+                return (uid, rel_path, f"pool_base_path missing for {uid}:{rel_path}")
+            pool_base_path = row[0]
         src_path = uid_path_util.reconstruct_path(UidPath(uid, rel_path))
-        dst_path = Path(removal_folder) / Path(rel_path).name
+        # Compute relative path to pool_base_path
+        try:
+            rel_to_pool = os.path.relpath(src_path, pool_base_path)
+        except Exception as e:
+            return (uid, rel_path, f"Failed to compute relpath: {e}")
+        dst_path = Path(removal_folder) / rel_to_pool
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             if os.stat(src_path).st_dev == os.stat(dst_path.parent).st_dev:

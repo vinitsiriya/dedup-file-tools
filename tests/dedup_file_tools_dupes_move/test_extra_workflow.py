@@ -43,7 +43,7 @@ def test_move_handles_missing_file(tmp_path):
     main(["analyze", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(src)])
     # Remove one file before move
     os.remove(src / "b.txt")
-    main(["move", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(src), "--dupes-folder", str(removal)])
+    main(["move", "--job-dir", str(job_dir), "--job-name", job_name, "--dupes-folder", str(removal)])
     # Should log error but not crash; check DB for error status
     import sqlite3
     db_path = str(job_dir / f"{job_name}.db")
@@ -66,11 +66,11 @@ def test_verify_detects_checksum_mismatch(tmp_path):
     job_name = "verify_mismatch"
     main(["init", "--job-dir", str(job_dir), "--job-name", job_name])
     main(["analyze", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(src)])
-    main(["move", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(src), "--dupes-folder", str(removal)])
+    main(["move", "--job-dir", str(job_dir), "--job-name", job_name, "--dupes-folder", str(removal)])
     # Corrupt the original keeper file (since verify checks original location)
     for f in src.iterdir():
         f.write_text("corrupted")
-    main(["verify", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(src), "--dupes-folder", str(removal)])
+    main(["verify", "--job-dir", str(job_dir), "--job-name", job_name])
     # Check DB for error status
     import sqlite3
     db_path = str(job_dir / f"{job_name}.db")
@@ -93,7 +93,7 @@ def test_summary_csv_output(tmp_path):
     job_name = "summary_csv"
     main(["init", "--job-dir", str(job_dir), "--job-name", job_name])
     main(["analyze", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(src)])
-    main(["move", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(src), "--dupes-folder", str(removal)])
+    main(["move", "--job-dir", str(job_dir), "--job-name", job_name, "--dupes-folder", str(removal)])
     main(["summary", "--job-dir", str(job_dir), "--job-name", job_name])
     csv_path = job_dir / "dedup_move_summary.csv"
     assert csv_path.exists()

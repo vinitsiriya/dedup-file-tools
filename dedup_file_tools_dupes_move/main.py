@@ -34,18 +34,16 @@ def main(argv=None):
     parser_preview.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_preview.add_argument('--job-name', required=True, help='Name for this deduplication job')
 
+
     parser_move = subparsers.add_parser('move', help='Move duplicate files to the dupes folder (or remove)')
     parser_move.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_move.add_argument('--job-name', required=True, help='Name for this deduplication job')
-    parser_move.add_argument('--lookup-pool', required=True, help='Source folder to scan for duplicates (dupes folder)')
-    parser_move.add_argument('--dupes-folder', required=True, help='Folder to move duplicates into (removal folder)')
+    parser_move.add_argument('--dupes-folder', required=False, help='Folder to move duplicates into (removal folder)')
     parser_move.add_argument('--threads', type=int, default=4, help='Number of threads for move phase')
 
     parser_verify = subparsers.add_parser('verify', help='Verify that duplicates were moved/removed as planned')
     parser_verify.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_verify.add_argument('--job-name', required=True, help='Name for this deduplication job')
-    parser_verify.add_argument('--lookup-pool', required=True, help='Source folder to scan for duplicates (dupes folder)')
-    parser_verify.add_argument('--dupes-folder', required=True, help='Folder where duplicates should have been moved (removal folder)')
     parser_verify.add_argument('--threads', type=int, default=4, help='Number of threads for verify phase')
 
     parser_summary = subparsers.add_parser('summary', help='Print summary and generate CSV report of deduplication results')
@@ -74,19 +72,74 @@ def main(argv=None):
         args = merge_config_with_args(args, config_dict, parser)
     setup_logging(args.job_dir, args.log_level)
 
+    def get_lookup_pool_from_db(job_dir, job_name):
+        import sqlite3
+        import os
+        db_path = os.path.join(job_dir, f"{job_name}.db")
+        if not os.path.exists(db_path):
+            raise RuntimeError(f"Job database not found: {db_path}")
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM job_metadata WHERE key='lookup_pool' LIMIT 1")
+            row = cur.fetchone()
+            if row:
+                return row[0]
+            else:
+                raise RuntimeError("lookup_pool not found in job_metadata. Please specify --lookup-pool.")
+
     if args.command == 'init':
         handle_init(args.job_dir, args.job_name)
     elif args.command == 'add-to-lookup-pool':
         handle_add_to_lookup_pool(args.job_dir, args.job_name, args.lookup_pool)
     elif args.command == 'analyze':
+        # Store lookup_pool in job_metadata for later phases
         handle_analyze(args.job_dir, args.job_name, args.lookup_pool, threads=args.threads)
+        # Save lookup_pool to job_metadata
+        import sqlite3, os
+        db_path = os.path.join(args.job_dir, f"{args.job_name}.db")
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE IF NOT EXISTS job_metadata (key TEXT PRIMARY KEY, value TEXT)")
+            cur.execute("INSERT OR REPLACE INTO job_metadata (key, value) VALUES (?, ?)", ("lookup_pool", args.lookup_pool))
+            conn.commit()
     elif args.command == 'preview-summary':
         handle_preview_summary(args.job_dir, args.job_name)
     elif args.command == 'move':
-        # For test and CLI, use lookup_pool as source and dupes_folder as destination
-        handle_move(args.job_dir, args.job_name, args.lookup_pool, args.dupes_folder, threads=args.threads)
+        lookup_pool = get_lookup_pool_from_db(args.job_dir, args.job_name)
+        import sqlite3, os
+        db_path = os.path.join(args.job_dir, f"{args.job_name}.db")
+        # If dupes_folder is not provided, load from job_metadata
+        dupes_folder = args.dupes_folder
+        if not dupes_folder:
+            with sqlite3.connect(db_path) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT value FROM job_metadata WHERE key='dupes_folder' LIMIT 1")
+                row = cur.fetchone()
+                if row:
+                    dupes_folder = row[0]
+                else:
+                    raise RuntimeError("dupes_folder not found in job_metadata. Please specify --dupes-folder during first move phase.")
+        # Save dupes_folder to job_metadata for later use
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE IF NOT EXISTS job_metadata (key TEXT PRIMARY KEY, value TEXT)")
+            cur.execute("INSERT OR REPLACE INTO job_metadata (key, value) VALUES (?, ?)", ("dupes_folder", dupes_folder))
+            conn.commit()
+        handle_move(args.job_dir, args.job_name, lookup_pool, dupes_folder, threads=args.threads)
     elif args.command == 'verify':
-        handle_verify(args.job_dir, args.job_name, args.lookup_pool, args.dupes_folder, threads=args.threads)
+        lookup_pool = get_lookup_pool_from_db(args.job_dir, args.job_name)
+        # Load dupes_folder from job_metadata
+        import sqlite3, os
+        db_path = os.path.join(args.job_dir, f"{args.job_name}.db")
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM job_metadata WHERE key='dupes_folder' LIMIT 1")
+            row = cur.fetchone()
+            if row:
+                dupes_folder = row[0]
+            else:
+                raise RuntimeError("dupes_folder not found in job_metadata. Please specify it during move phase.")
+        handle_verify(args.job_dir, args.job_name, lookup_pool, dupes_folder, threads=args.threads)
     elif args.command == 'summary':
         handle_summary(args.job_dir, args.job_name)
     elif args.command == 'one-shot':

@@ -18,6 +18,7 @@ def setup_test_db(tmp_path):
             last_modified INTEGER,
             checksum TEXT,
             scanned_at INTEGER,
+            pool_base_path TEXT,
             PRIMARY KEY (uid, relative_path)
         )
     """)

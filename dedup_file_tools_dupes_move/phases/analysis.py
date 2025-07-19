@@ -80,36 +80,37 @@ def find_and_queue_duplicates(db_path, src_root, threads=4):
             stat = Path(path).stat()
             uid_path_obj = uid_path.convert_path(path)
             uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
+            # Compute pool_base_path as src_root (absolute)
+            pool_base_path = os.path.abspath(src_root)
             cur.execute("""
-                INSERT OR REPLACE INTO dedup_files_pool (uid, relative_path, size, last_modified, checksum, scanned_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (uid, rel_path, stat.st_size, int(stat.st_mtime), chksum, now))
+                INSERT OR REPLACE INTO dedup_files_pool (uid, relative_path, size, last_modified, checksum, scanned_at, pool_base_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (uid, rel_path, stat.st_size, int(stat.st_mtime), chksum, now, pool_base_path))
         conn.commit()
-    # Step 4: Group by checksum
-    checksum_to_files = {}
-    for path, chksum in results:
-        if not chksum:
-            continue
-        checksum_to_files.setdefault(chksum, []).append(path)
-    # Step 5: For each group with >1 file, pick a keeper, queue others in dedup_move_plan
+    # Step 4: Group by checksum globally across all files in dedup_files_pool
     with connect_with_attached_checksum_db(db_path, checksum_db_path) as conn:
         cur = conn.cursor()
-        for chksum, paths in checksum_to_files.items():
-            if len(paths) < 2:
+        cur.execute("SELECT uid, relative_path, checksum FROM dedup_files_pool WHERE checksum IS NOT NULL")
+        all_files = cur.fetchall()
+        checksum_to_files = {}
+        for uid, rel_path, chksum in all_files:
+            if not chksum:
+                continue
+            checksum_to_files.setdefault(chksum, []).append((uid, rel_path))
+        # Clear existing move plan (optional: only for planned, not moved)
+        cur.execute("DELETE FROM dedup_move_plan WHERE status='planned'")
+        for chksum, file_tuples in checksum_to_files.items():
+            if len(file_tuples) < 2:
                 continue
             # Pick one to keep (the first), others to move
-            keeper_path = paths[0]
-            keeper_uid_path = uid_path.convert_path(keeper_path)
-            keeper_uid, keeper_rel_path = keeper_uid_path.uid, keeper_uid_path.relative_path
+            keeper_uid, keeper_rel_path = file_tuples[0]
             # Insert keeper with is_keeper=1
             cur.execute("""
                 INSERT OR REPLACE INTO dedup_move_plan (uid, relative_path, checksum, move_to_uid, move_to_rel_path, status, planned_at, is_keeper)
                 VALUES (?, ?, ?, NULL, NULL, ?, ?, 1)
             """, (keeper_uid, keeper_rel_path, chksum, 'keeper', now))
             # Insert others with is_keeper=0, status='planned', move_to_* = keeper
-            for path in paths[1:]:
-                uid_path_obj = uid_path.convert_path(path)
-                uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
+            for uid, rel_path in file_tuples[1:]:
                 cur.execute("""
                     INSERT OR REPLACE INTO dedup_move_plan (uid, relative_path, checksum, move_to_uid, move_to_rel_path, status, planned_at, is_keeper)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 0)

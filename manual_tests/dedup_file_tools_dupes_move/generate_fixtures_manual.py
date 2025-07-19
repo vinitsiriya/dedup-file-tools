@@ -2,14 +2,18 @@ import os
 import argparse
 
 def generate_files(src, n=5):
-    os.makedirs(src, exist_ok=True)
+    # Create subdirectories
+    dir_a = os.path.join(src, "a")
+    dir_b = os.path.join(src, "b")
+    os.makedirs(dir_a, exist_ok=True)
+    os.makedirs(dir_b, exist_ok=True)
+    # Create unique files in a
     for i in range(n):
-        with open(os.path.join(src, f"dupes_move_file{i}.txt"), "w") as f:
+        with open(os.path.join(dir_a, f"file{i}.txt"), "w") as f:
             f.write(f"Test file {i} for dedup_file_tools_dupes_move\n")
-    # Add a duplicate
-    if n > 1:
-        with open(os.path.join(src, f"dupes_move_file0_copy.txt"), "w") as f:
-            f.write("Test file 0 for dedup_file_tools_dupes_move\n")
+    # Create a true duplicate in b (same content as file0.txt in a)
+    with open(os.path.join(dir_b, "file0.txt"), "w") as f:
+        f.write("Test file 0 for dedup_file_tools_dupes_move\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate test files for dedup_file_tools_dupes_move manual tests.")

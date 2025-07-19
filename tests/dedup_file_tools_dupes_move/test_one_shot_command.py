@@ -37,5 +37,5 @@ def test_one_shot_command(tmp_path):
         cur = conn.cursor()
         cur.execute("SELECT status, COUNT(*) FROM dedup_move_plan GROUP BY status")
         status_counts = dict(cur.fetchall())
-        assert status_counts.get("verified", 0) == 1
-        assert status_counts.get("keeper", 0) == 1
+        assert status_counts.get("verified", 0) == 2
+        # After verification, all keepers should be marked as verified

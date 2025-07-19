@@ -9,21 +9,25 @@ def test_cli_workflow_move(tmp_path):
     dupes_folder = tmp_path / "dupes"
     removal_folder = tmp_path / "removal"
     job_dir = tmp_path / "job"
-    dupes_folder.mkdir()
+    # Create subdirectories and files
+    (dupes_folder / "a").mkdir(parents=True)
+    (dupes_folder / "b").mkdir(parents=True)
     removal_folder.mkdir()
     job_dir.mkdir()
-    (dupes_folder / "a.txt").write_text("hello")
-    (dupes_folder / "b.txt").write_text("hello")
-    (dupes_folder / "c.txt").write_text("unique")
+    # True duplicate: a/file0.txt and b/file0.txt
+    (dupes_folder / "a" / "file0.txt").write_text("hello")
+    (dupes_folder / "b" / "file0.txt").write_text("hello")
+    # Unique files
+    for i in range(1, 5):
+        (dupes_folder / "a" / f"file{i}.txt").write_text(f"unique{i}")
     job_name = "testjob"
 
     steps = [
         ["init", "--job-dir", str(job_dir), "--job-name", job_name],
-        ["add-to-lookup-pool", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(dupes_folder)],
         ["analyze", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(dupes_folder)],
         ["preview-summary", "--job-dir", str(job_dir), "--job-name", job_name],
-        ["move", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(dupes_folder), "--dupes-folder", str(removal_folder)],
-        ["verify", "--job-dir", str(job_dir), "--job-name", job_name, "--lookup-pool", str(dupes_folder), "--dupes-folder", str(removal_folder)],
+        ["move", "--job-dir", str(job_dir), "--job-name", job_name, "--dupes-folder", str(removal_folder)],
+        ["verify", "--job-dir", str(job_dir), "--job-name", job_name],
         ["summary", "--job-dir", str(job_dir), "--job-name", job_name],
     ]
     for args in steps:
@@ -32,7 +36,23 @@ def test_cli_workflow_move(tmp_path):
         except SystemExit as e:
             if e.code != 0:
                 raise
-    moved_files = list(removal_folder.glob("*.txt"))
-    assert any(f.name == "a.txt" or f.name == "b.txt" for f in moved_files)
+    # Check for moved duplicate (should preserve relative path)
+    moved_files = list(removal_folder.rglob("file0.txt"))
+    assert len(moved_files) == 1
+    # The moved file should be from either a/file0.txt or b/file0.txt
+    assert moved_files[0].name == "file0.txt"
+
+    # Stricter: Only one file0.txt remains in the source (dupes_folder)
+    remaining_file0 = list(dupes_folder.rglob("file0.txt"))
+    assert len(remaining_file0) == 1, f"Expected only one file0.txt in source, found: {remaining_file0}"
+    # The moved file is not present in the source
+    assert moved_files[0].resolve() != remaining_file0[0].resolve(), "Moved file should not remain in source"
+
+    # All unique files remain untouched
+    for i in range(1, 5):
+        unique_file = dupes_folder / "a" / f"file{i}.txt"
+        assert unique_file.exists(), f"Unique file {unique_file} missing after move"
+
+    # The summary CSV exists
     summary_csv = job_dir / "dedup_move_summary.csv"
     assert summary_csv.exists()
