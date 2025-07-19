@@ -31,17 +31,19 @@ dedup_file_tools_dupes_move/
 
 ---
 
+
 ## CLI Structure (Planned)
 
-The CLI will mirror the phase-based design of the copy tool, with subcommands for each phase and utility:
+The CLI is phase-based and supports both stepwise and one-shot operation. Subcommands:
 
 - `generate-config`         : Interactive YAML config generator
-- `init`                    : Initialize a new job directory
-- `analyze`                 : Analyze input locations for duplicates
-- `move`                    : Move duplicate files to target location(s)
-- `verify`                  : Verify that duplicates were moved as intended
-- `summary`                 : Print summary and generate CSV report
-- `add-file`/`add-source`   : Add files or directories to the job state
+- `init`                    : Initialize a new job directory and database
+- `add-source`              : Add one or more source directories to the job state
+- `analyze`                 : Scan sources, compute checksums, group duplicates, and build move plan
+- `preview-summary`         : Preview the planned moves and duplicate groups before any file operations
+- `move`                    : Move duplicate files to the destination, updating status and logs
+- `verify`                  : Verify that moved files are present at the destination and absent from the source
+- `summary`                 : Print final summary and generate audit CSV report
 - `remove-file`             : Remove a file from the job state
 - `list-files`              : List all files in the job state
 - `status`                  : Show job progress and statistics
@@ -52,9 +54,10 @@ The `one-shot` command will run the entire workflow in sequence:
 1. `init`
 2. `add-source`
 3. `analyze`
-4. `move`
-5. `verify`
-6. `summary`
+4. `preview-summary`
+5. `move`
+6. `verify`
+7. `summary`
 
 ---
 

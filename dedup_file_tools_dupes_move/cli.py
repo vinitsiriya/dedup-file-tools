@@ -1,6 +1,3 @@
-"""
-CLI entrypoint for dedup_file_tools_dupes_move
-"""
 from dedup_file_tools_dupes_move.main import main
 
 if __name__ == "__main__":
