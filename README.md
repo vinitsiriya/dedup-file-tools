@@ -162,9 +162,11 @@ See [UidPath documentation](docs/dedup_file_tools_commons/uidpath.md) for detail
   - [dedup_file_tools_dupes_move User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md)
   - [dedup_file_tools_fs_copy User Guide](docs/dedup_file_tools_fs_copy/user_prepective/readme.md)
 - **Agent/AI integration:**
-  - [External AI Tool Integration](docs/dedup_file_tools_fs_copy/standalone/external_ai_tool_doc.md)
+  - [External AI Tool Integration (dedup-file-copy-fs)](docs/dedup_file_tools_fs_copy/standalone/external_ai_tool_doc.md)
+  - [External AI Tool Integration (dedup-file-move-dupes)](docs/dedup_file_tools_dupes_move/standalone/external_ai_tool_doc.md)
 - **Requirements & design:**
-  - [Requirements & Design](docs/dedup_file_tools_fs_copy/developer_reference/requirements/requirements.md)
+  - [Requirements & Design (dedup-file-copy-fs)](docs/dedup_file_tools_fs_copy/developer_reference/requirements/requirements.md)
+  - [Requirements & Design (dedup-file-move-dupes)](docs/dedup_file_tools_dupes_move/developer_reference/requirements/requirements.md)
 
 ---
 
