@@ -6,13 +6,19 @@ setup(
     description="Non-Redundant Media File Copy Tool: resumable, auditable, cross-platform, CLI-based.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    author="Your Name",
-    author_email="your@email.com",
+    author="Vinit",
+    author_email="vinitsiriya@gmail.com",
     url="https://github.com/vinitsiriya/dedup-file-tools",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        r.strip() for r in open("requirements.txt") if r.strip() and not r.startswith("#")
+        "pytest",
+        "flake8",
+        "black",
+        "mypy",
+        "wmi",
+        "tqdm",
+        "pyyaml",
     ],
     entry_points={
         "console_scripts": [

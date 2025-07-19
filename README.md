@@ -112,11 +112,13 @@ See the [User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md
 
 ## Quick Start (Unified)
 
-1. **Install:**
+1. **Install (Recommended):**
+   ```
+   pipx install dedup-file-tools
+   ```
+   Or, for a local development install:
    ```
    pip install .
-   # or for isolated CLI usage:
-   pipx install .
    ```
 2. **Generate a config file (recommended):**
    ```
