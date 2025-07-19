@@ -36,7 +36,7 @@ Integration points include:
 ---
 
 ## CLI Automation & YAML Config Usage
-- Agents/AI tools can automate all CLI phases (`init`, `add-to-lookup-pool`, `analyze`, `preview-summary`, `move`, `verify`, `summary`, `one-shot`) by invoking the Python CLI with the correct arguments.
+- Agents/AI tools can automate all CLI phases (`init`, `analyze`, `preview-summary`, `move`, `verify`, `summary`, `one-shot`) by invoking the Python CLI with the correct arguments.
 - YAML config files can be used for reproducible CLI runs. Command-line arguments always override config values (see `main.py`, `load_yaml_config`, and `merge_config_with_args`).
 - Agents must always specify the correct `--job-dir` and `--job-name` to ensure all state, logs, and outputs are auditable and reproducible.
 - All agent actions (documentation updates, audits, CLI invocations) must be logged in `agent-context.md` and `dev-notes.md` in `agents/workflow/implementation-strategies/dedup_file_tools_dupes_move_doc_update/`.
@@ -134,23 +134,6 @@ dedup-file-move-dupes <command> [OPTIONS]
 - Fails with a clear error if the job already exists or DB cannot be created
 - Idempotent: running multiple times with the same arguments is safe
 
-### `add-to-lookup-pool`
-**Purpose:** (Optional) Add a folder to the lookup pool for duplicate scanning. In this tool, this command is a no-op and only logs the request; all pool management is handled in the `analyze` phase.
-
-**Arguments:**
-- `--job-dir PATH` (required)
-- `--job-name NAME` (required)
-- `--lookup-pool PATH` (required): Path to folder to scan for duplicates
-
-**Internal Logic:**
-- Logs the request but does not modify the database or state
-- Pool management is always handled by the `analyze` phase
-
-**Outputs/Side Effects:**
-- Logs a message indicating the command was called (for auditability)
-
-**Error Handling:**
-- Never fails; always a no-op
 
 ### `analyze`
 **Purpose:** Scan the lookup pool, compute checksums, persist all file metadata, group by checksum, and queue all but one file per group in the move plan.
@@ -200,8 +183,7 @@ dedup-file-move-dupes <command> [OPTIONS]
 **Arguments:**
 - `--job-dir PATH` (required)
 - `--job-name NAME` (required)
-- `--lookup-pool PATH` (required): Source folder to scan for duplicates
-- `--dupes-folder PATH` (required): Folder to move duplicates into (removal folder)
+- `--dupes-folder PATH` (optional): Folder to move duplicates into (removal folder). If not provided, it is loaded from job metadata (set during the first move phase).
 - `--threads N` (default: 4): Number of threads for move phase
 
 **Internal Logic:**
@@ -209,6 +191,7 @@ dedup-file-move-dupes <command> [OPTIONS]
 - For each planned duplicate, moves the file to the removal folder (using fast-move or copy-delete as needed)
 - Updates the database with move status and logs each action
 - Handles cross-device moves and logs the move type
+- If `dupes-folder` is not provided, loads it from job metadata (set during the first move phase)
 
 **Outputs/Side Effects:**
 - Files are moved or removed as planned
@@ -225,14 +208,13 @@ dedup-file-move-dupes <command> [OPTIONS]
 **Arguments:**
 - `--job-dir PATH` (required)
 - `--job-name NAME` (required)
-- `--lookup-pool PATH` (required)
-- `--dupes-folder PATH` (required)
 - `--threads N` (default: 4): Number of threads for verification
 
 **Internal Logic:**
 - Reads the move plan and verifies that all files marked as moved/removed are no longer present in the lookup pool
 - Checks file size and optionally verifies checksums
 - Updates the database with verification results and logs discrepancies
+- Loads `dupes-folder` from job metadata (set during the move phase)
 
 **Outputs/Side Effects:**
 - Database is updated with verification results

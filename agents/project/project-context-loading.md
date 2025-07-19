@@ -4,11 +4,12 @@ To operate correctly in this project, the agent must always load the full projec
 
 ---
 
+
 ## 1. Requirements Awareness
 - Read and understand all requirements from:
-  - `docs/requirements.md`
-  - `docs/requirements-test.md`
   - `README.md`
+  - `docs/agent/project-context.md` (for agent/project context documentation)
+  - `docs/dedup_file_tools_dupes_move/user_prespective/README.md` (for user perspective and CLI usage)
 - Ensure all requirements, constraints, and test protocols are fully loaded into working memory.
 
 ## 2. Directory Structure Awareness

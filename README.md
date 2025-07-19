@@ -1,185 +1,164 @@
-# fs-copy-tool
 
-Safely copy media files (photos, videos) from a source HDD pool to a destination HDD pool, ensuring **no redundant (duplicate) files** at the destination. The tool is robust, resumable, and fully auditable, using an SQLite database for all state and supporting both fixed and removable drives.
 
----
+# 🚀 dedup-file-tools: The Ultimate Toolkit for Safe, Fast, and Auditable File Management
 
-## Features
-- Block-wise (4KB) file copying and SHA-256 checksums
-- No file is copied if its checksum already exists in the destination (deduplication)
-- All state, logs, and planning files are stored in a dedicated job directory
-- Fully resumable and idempotent: safely interrupt and resume at any time
-- **Stateful, file-level job setup:**
-  - `add-file` — Add a single file to the job state/database
-  - `remove-file` — Remove a file from the job state/database
-- CLI commands for all phases: `init`, `analyze`, `import-checksums`, `checksum`, `copy`, `resume`, `status`, `log`, `verify`, `deep-verify`, and more
-- **One-Shot Command:** Run the entire workflow in a single step with `one-shot` (see Quick Start)
-- **YAML Config Support:** Use `-c <config.yaml>` to load all CLI options from a YAML file for any command. CLI args override YAML values. See CLI docs for details.
-- Verification and audit commands: `verify`, `deep-verify`, `verify-status`, `deep-verify-status`, `verify-status-summary`, `verify-status-full`, `deep-verify-status-summary`, `deep-verify-status-full`, `status`, `log`
-- Handles edge cases: partial/incomplete copies, missing files, already copied files, corrupted files (reports errors, does not fix)
-- Cross-platform: Windows & Linux
-- Full test suite for all features, edge cases, and workflows
+**Two powerful CLI tools, one mission: never lose a file, never copy a duplicate, and always know what happened.**
 
 ---
 
+## What Does Each Tool Do?
 
-## Quick Start
+- **dedup-file-copy-fs**: Effortlessly copy files from one place to another—guaranteeing that only a single, non-duplicate copy of each file ever lands in your destination. No more wasted space or accidental double copies!
 
-### 1. Install Requirements
-```
-pip install -r requirements.txt
-```
+- **dedup-file-move-dupes**: Hunts down duplicate files in any folder or storage pool and safely moves all detected duplicates to a special `.dupes` directory. It’s the easiest way to clean up your drives and reclaim space—exciting, right?
 
-
+Both tools are designed for safety, auditability, and total peace of mind!
 
 
-### 2. One-Shot Workflow (Recommended)
-Run the entire workflow (init, import, add-source, analyze, checksum, copy, verify, summary) in a single command:
-```
-python -m fs_copy_tool.main one-shot --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT> --dst <DST_ROOT> [options]
-```
-Or, use a YAML config file for all options:
-```
-python -m fs_copy_tool.main one-shot -c config.yaml
-```
-*All CLI options can be set in the YAML file. CLI args override YAML values. See CLI docs for YAML format and details.*
+## Why dedup-file-tools?
 
-
-#### Generate a Config File Interactively
-To create a YAML config file interactively, run:
-```
-python -m fs_copy_tool generate-config
-```
-Follow the prompts to generate a config file for use with `-c`.
-
-**If any step fails, the workflow will stop immediately and print an error. On success, "Done" is printed.**
-
-### 3. Manual (Step-by-Step) Workflow
-
-#### a. Initialize Job Directory
-```
-python -m fs_copy_tool.main init --job-dir .copy-task --job-name <job-name>
-```
-
-#### b. Add Files or Sources to the Job
-# Add a single file:
-python -m fs_copy_tool.main add-file --job-dir .copy-task --job-name <job-name> --file <FILE_PATH>
-# Add all files from a directory:
-python -m fs_copy_tool.main add-source --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT>
-# List all files in the job:
-python -m fs_copy_tool.main list-files --job-dir .copy-task --job-name <job-name>
-# Remove a file from the job:
-python -m fs_copy_tool.main remove-file --job-dir .copy-task --job-name <job-name> --file <FILE_PATH>
-
-#### c. Analyze Source and Destination Volumes
-```
-python -m fs_copy_tool.main analyze --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT> --dst <DST_ROOT>
-```
-
-#### d. Compute Checksums
-```
-python -m fs_copy_tool.main checksum --job-dir .copy-task --job-name <job-name> --table source_files
-python -m fs_copy_tool.main checksum --job-dir .copy-task --job-name <job-name> --table destination_files
-```
-
-#### e. Copy Non-Redundant Files (with Destination Pool Validation)
-```
-python -m fs_copy_tool.main copy --job-dir .copy-task --job-name <job-name> --src <SRC_ROOT> --dst <DST_ROOT>
-```
-*Before copying, the tool will update and validate all destination pool checksums with a progress bar to ensure deduplication is accurate and up to date.*
-
----
-
-## Important Architecture Notes (2025-07)
-
-- All job databases are now named `<job-name>.db` in the job directory. You must specify `--job-name` for all CLI commands that operate on a job.
-- The checksum cache database is always named `checksum-cache.db` in the job directory.
-- All CLI usage examples must include `--job-name <job-name>`.
-- The tool will not operate on legacy `copytool.db` files; migrate or re-initialize jobs as needed.
-
-### 7. Resume, Status, and Logs
-```
-python -m fs_copy_tool.main resume --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
-python -m fs_copy_tool.main status --job-dir .copy-task
-python -m fs_copy_tool.main log --job-dir .copy-task
-```
-
-### 8. Verification and Audit
-```
-python -m fs_copy_tool.main verify --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT> [--stage shallow|deep]
-python -m fs_copy_tool.main deep-verify --job-dir .copy-task --src <SRC_ROOT> --dst <DST_ROOT>
-python -m fs_copy_tool.main verify-status --job-dir .copy-task
-python -m fs_copy_tool.main deep-verify-status --job-dir .copy-task
-python -m fs_copy_tool.main verify-status-summary --job-dir .copy-task
-python -m fs_copy_tool.main verify-status-full --job-dir .copy-task
-python -m fs_copy_tool.main deep-verify-status-summary --job-dir .copy-task
-python -m fs_copy_tool.main deep-verify-status-full --job-dir .copy-task
-```
-
-### 9. Import Checksums from Another Job (Current, 2025-07-15)
-```
-python -m fs_copy_tool.main import-checksums --job-dir .copy-task --other-db <OTHER_DB_PATH>
-```
+- **No more accidental duplicates:** Move or copy files between drives, folders, or backup pools with confidence—deduplication is automatic.
+- **Resumable & robust:** Interrupt a job? No problem. All state is tracked in a job database. Resume anytime, anywhere.
+- **Audit everything:** Every action, every file, every error—fully logged and queryable.
+- **Cross-platform:** Works on Windows, Linux, and with both fixed and removable drives.
+- **Portable & future-proof:** Thanks to UidPath, your job and checksum cache remain valid even if drive letters or mount points change.
+- **Agent/AI ready:** YAML config, one-shot workflows, and full audit trails make it perfect for automation and integration.
 
 ---
 
 
-## CLI Commands
-- `generate-config` — Interactively generate a YAML config file for use with `-c`
-- `init --job-dir <path>` — Create and initialize a job directory
-- `import-checksums --job-dir <path> --other-db <other_db_path>` — Import checksums from another job's checksum_cache table
-- `analyze --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]` — Scan source/destination and update the database
-- `checksum --job-dir <path> --table <source_files|destination_files> [--threads N] [--no-progress]` — Compute missing/stale checksums
-- `copy --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress] [--resume]` — Before copying, updates and validates all destination pool checksums with a progress bar, then copies only non-duplicate files
-- `resume --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--threads N] [--no-progress]` — Resume incomplete/failed operations
-- `status --job-dir <path>` — Show job progress and statistics
-- `log --job-dir <path>` — Output a log or audit trail
-- `verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...] [--stage shallow|deep]` — Shallow/deep verification of copied files
-- `deep-verify --job-dir <path> [--src <src_dir> ...] [--dst <dst_dir> ...]` — Deep verify: compare checksums
-- `verify-status --job-dir <path>` — Show shallow verification results
-- `deep-verify-status --job-dir <path>` — Show deep verification results
-- `verify-status-summary --job-dir <path>` — Show short summary of shallow verification
-- `verify-status-full --job-dir <path>` — Show all shallow verification results
-- `deep-verify-status-summary --job-dir <path>` — Show short summary of deep verification
-- `deep-verify-status-full --job-dir <path>` — Show all deep verification results
-- `add-file --job-dir <path> --file <file_path>` — Add a single file to the job state/database
-- `add-source --job-dir <path> --src <src_dir>` — Recursively add all files from a directory
-- `list-files --job-dir <path>` — List all files in the job state/database
-- `remove-file --job-dir <path> --file <file_path>` — Remove a file from the job state/database
+## Two Tools, Two Workflows — Pick Your Power!
 
 ---
 
-## CLI Documentation
+### 🚦 dedup-file-copy-fs: The "Copy Without Duplicates" Workflow
 
-See [docs/cli.md](docs/cli.md) for complete CLI command reference, usage examples, and best practices.
+Want to copy your files from one drive or folder to another, but never want to see a duplicate again? This is your magic wand!
+
+#### Step-by-Step Tutorial
+
+1. **Initialize your copy job:**
+   ```
+   dedup-file-copy-fs init --job-dir ./copyjob --job-name copyjob
+   ```
+2. **Add your source(s):**
+   ```
+   dedup-file-copy-fs add-source --job-dir ./copyjob --job-name copyjob --src ./source
+   ```
+3. **Analyze and checksum:**
+   ```
+   dedup-file-copy-fs analyze --job-dir ./copyjob --job-name copyjob --src ./source --dst ./dest
+   dedup-file-copy-fs checksum --job-dir ./copyjob --job-name copyjob --table source_files
+   dedup-file-copy-fs checksum --job-dir ./copyjob --job-name copyjob --table destination_files
+   ```
+4. **Copy, with deduplication magic:**
+   ```
+   dedup-file-copy-fs copy --job-dir ./copyjob --job-name copyjob --src ./source --dst ./dest
+   ```
+   Voila! Only unique files are copied. No duplicates, ever.
+5. **Verify and audit:**
+   ```
+   dedup-file-copy-fs verify --job-dir ./copyjob --job-name copyjob --stage deep
+   dedup-file-copy-fs log --job-dir ./copyjob
+   ```
+
+**Want it all in one go?**
+Just run:
+```
+dedup-file-copy-fs one-shot --job-dir ./copyjob --job-name copyjob --src ./source --dst ./dest
+```
+And... Voila! Your files are safely, uniquely copied.
+
+See the [User Guide](docs/dedup_file_tools_fs_copy/user_prepective/readme.md) for advanced tricks and YAML config magic.
 
 ---
 
-## Testing
-Run all tests (Windows PowerShell):
+### 🧹 dedup-file-move-dupes: The "Find & Sweep Duplicates" Workflow
+
+Ready to reclaim space and banish duplicate files from your drives? This tool is your digital broom!
+
+#### Step-by-Step Tutorial
+
+1. **Initialize your dedupe job:**
+   ```
+   dedup-file-move-dupes init --job-dir ./myjob --job-name myjob
+   ```
+2. **Scan your pool for duplicates:**
+   ```
+   dedup-file-move-dupes analyze --job-dir ./myjob --job-name myjob --lookup-pool ./data
+   dedup-file-move-dupes checksum --job-dir ./myjob --job-name myjob --table lookup_files
+   ```
+3. **Move all detected duplicates to .dupes:**
+   ```
+   dedup-file-move-dupes move-dupes --job-dir ./myjob --job-name myjob --dupes-folder ./dupes
+   ```
+   Voila! All your duplicate files are safely moved to `.dupes` for review or deletion.
+4. **Summarize and audit:**
+   ```
+   dedup-file-move-dupes summary --job-dir ./myjob --job-name myjob
+   dedup-file-move-dupes log --job-dir ./myjob
+   ```
+
+**Want it all in one go?**
+Just run:
 ```
-./scripts/test.ps1
+dedup-file-move-dupes one-shot --job-dir ./myjob --job-name myjob --lookup-pool ./data --dupes-folder ./dupes
 ```
-Or (Linux/macOS):
-```
-./scripts/test.sh
-```
+And... Voila! Your drives are clean and duplicate-free.
+
+See the [User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md) for advanced workflows and YAML config power.
 
 ---
 
-## Project Structure
-- `fs-copy-tool/` — Main source code
-- `tests/` — Automated tests (pytest)
-- `e2e_tests/` — End-to-end and integration tests
-- `agents/` — Agent planning, memory, and reasoning
-- `changes/` — Execution logs and persistent state
-- `scripts/` — Automation scripts for testing, linting, formatting, and archival
-- `Taskfile.yml` — Cross-platform automation tasks
+## Quick Start (Unified)
+
+1. **Install:**
+   ```
+   pip install .
+   # or for isolated CLI usage:
+   pipx install .
+   ```
+2. **Generate a config file (recommended):**
+   ```
+   dedup-file-copy-fs generate-config
+   # or
+   dedup-file-move-dupes --config config.yaml
+   ```
+3. **Run a one-shot workflow:**
+   ```
+   dedup-file-move-dupes one-shot --job-dir ./myjob --job-name myjob --lookup-pool ./data --dupes-folder ./dupes
+   dedup-file-copy-fs one-shot --job-dir ./copyjob --job-name copyjob --src ./source --dst ./dest
+   ```
+4. **Check logs, verify, and audit:**
+   ```
+   dedup-file-move-dupes summary --job-dir ./myjob --job-name myjob
+   dedup-file-copy-fs verify --job-dir ./copyjob --job-name copyjob --stage deep
+   ```
 
 ---
 
-## Requirements & Design
-See `requirements.md` and `requirements-test.md` for full requirements, design, and test protocols. See `AGENTS.md` for agent workflow protocols.
+## The Magic of UidPath
+
+Both tools use a unique, system-independent path abstraction called **UidPath**. This means:
+- Your job and checksum cache remain valid even if drive letters or mount points change.
+- You can move drives between systems, plug into different USB ports, and never lose track of your files.
+- Deduplication and verification are robust and portable.
+See [UidPath documentation](docs/dedup_file_tools_commons/uidpath.md) for details.
+
+---
+
+## Want More?
+
+- **Full CLI docs:**
+  - [dedup_file_tools_dupes_move CLI Reference](docs/dedup_file_tools_dupes_move/developer_reference/cli.md)
+  - [dedup_file_tools_fs_copy CLI Reference](docs/dedup_file_tools_fs_copy/developer_reference/cli.md)
+- **User guides & tutorials:**
+  - [dedup_file_tools_dupes_move User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md)
+  - [dedup_file_tools_fs_copy User Guide](docs/dedup_file_tools_fs_copy/user_prepective/readme.md)
+- **Agent/AI integration:**
+  - [External AI Tool Integration](docs/dedup_file_tools_fs_copy/standalone/external_ai_tool_doc.md)
+- **Requirements & design:**
+  - [Requirements & Design](docs/dedup_file_tools_fs_copy/developer_reference/requirements/requirements.md)
 
 ---
 

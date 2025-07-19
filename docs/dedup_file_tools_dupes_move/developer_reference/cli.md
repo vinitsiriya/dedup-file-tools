@@ -29,8 +29,9 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 ## Commands and Arguments
 
 
+
 ### `init`
-**Purpose:** Initialize a new deduplication job. Creates the job directory (if needed) and initializes the SQLite database for all future phases.
+**Purpose:** Initialize a new deduplication job. Sets up the job directory and database for all future phases.
 
 **Arguments:**
 - `--job-dir PATH` (required): Directory to store job state, logs, and database
@@ -39,7 +40,7 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 **Internal Logic:**
 - Creates the job directory if it does not exist
 - Creates a new SQLite database for job state and metadata
-- Attaches a checksum cache database for efficient duplicate detection
+- Attaches a checksum cache database for duplicate detection
 - Logs all actions to the job directory
 
 **Outputs/Side Effects:**
@@ -51,27 +52,11 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 - Idempotent: running multiple times with the same arguments is safe
 
 
-### `add-to-lookup-pool`
-**Purpose:** (Optional) Add a folder to the lookup pool for duplicate scanning. In this tool, this command is a no-op and only logs the request; all pool management is handled in the `analyze` phase.
 
-**Arguments:**
-- `--job-dir PATH` (required)
-- `--job-name NAME` (required)
-- `--lookup-pool PATH` (required): Path to folder to scan for duplicates
-
-**Internal Logic:**
-- Logs the request but does not modify the database or state
-- Pool management is always handled by the `analyze` phase
-
-**Outputs/Side Effects:**
-- Logs a message indicating the command was called (for auditability)
-
-**Error Handling:**
-- Never fails; always a no-op
 
 
 ### `analyze`
-**Purpose:** Scan the lookup pool, compute checksums, persist all file metadata, group by checksum, and queue all but one file per group in the move plan.
+**Purpose:** Scan the lookup pool, compute checksums, persist file metadata, group by checksum, and queue all but one file per group in the move plan.
 
 **Arguments:**
 - `--job-dir PATH` (required)
@@ -85,6 +70,7 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 - Persists file metadata to the database (`dedup_files_pool`)
 - Groups files by checksum and queues all but one per group in `dedup_move_plan`
 - Logs progress and errors
+- Stores the latest `lookup_pool` in job metadata (overwriting previous value)
 
 **Outputs/Side Effects:**
 - Updates the job database with file metadata and move plan
@@ -93,6 +79,7 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 **Error Handling:**
 - Logs and skips files that cannot be read or checksummed
 - Fails if the database cannot be updated
+
 
 
 ### `preview-summary`
@@ -114,14 +101,15 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 - Fails with a clear error if the database is missing or corrupt
 
 
+
+
 ### `move`
 **Purpose:** Move or remove duplicate files as planned, updating the database and logging all actions.
 
 **Arguments:**
 - `--job-dir PATH` (required)
 - `--job-name NAME` (required)
-- `--lookup-pool PATH` (required): Source folder to scan for duplicates
-- `--dupes-folder PATH` (required): Folder to move duplicates into (removal folder)
+- `--dupes-folder PATH` (optional): Folder to move duplicates into (removal folder). If not provided, it is loaded from job metadata (set during the first move phase).
 - `--threads N` (default: 4): Number of threads for move phase
 
 **Internal Logic:**
@@ -129,6 +117,7 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 - For each planned duplicate, moves the file to the removal folder (using fast-move or copy-delete as needed)
 - Updates the database with move status and logs each action
 - Handles cross-device moves and logs the move type
+- If `dupes-folder` is not provided, loads it from job metadata (set during the first move phase)
 
 **Outputs/Side Effects:**
 - Files are moved or removed as planned
@@ -140,20 +129,21 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 - Fails if the database cannot be updated
 
 
+
+
 ### `verify`
 **Purpose:** Verify that all planned moves/removals were successful and that no duplicates remain in the lookup pool.
 
 **Arguments:**
 - `--job-dir PATH` (required)
 - `--job-name NAME` (required)
-- `--lookup-pool PATH` (required)
-- `--dupes-folder PATH` (required)
 - `--threads N` (default: 4): Number of threads for verification
 
 **Internal Logic:**
 - Reads the move plan and verifies that all files marked as moved/removed are no longer present in the lookup pool
 - Checks file size and optionally verifies checksums
 - Updates the database with verification results and logs discrepancies
+- Loads `dupes-folder` from job metadata (set during the move phase)
 
 **Outputs/Side Effects:**
 - Database is updated with verification results
@@ -163,6 +153,7 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 **Error Handling:**
 - Logs and reports missing files or checksum mismatches
 - Fails if the database cannot be updated
+
 
 
 
@@ -191,6 +182,7 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 - Fails if the import cannot be completed (e.g., DB error)
 
 
+
 ### `summary`
 **Purpose:** Print a summary and generate a CSV report of deduplication results for the current job.
 
@@ -210,6 +202,7 @@ python -m dedup_file_tools_dupes_move.main <command> [OPTIONS]
 
 **Error Handling:**
 - Fails with a clear error if the database is missing or corrupt
+
 
 
 ### `one-shot`
