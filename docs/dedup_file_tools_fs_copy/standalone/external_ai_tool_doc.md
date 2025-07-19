@@ -1,5 +1,5 @@
 
-# fs-copy-tool: Portable Documentation for AI Tool Integration
+# dedup-file-copy-fs: Portable Documentation for AI Tool Integration
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@
 
 ## Overview
 
-`fs-copy-tool` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
+`dedup-file-copy-fs` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
 
 **New Feature (2025-07-18):**
 The tool now includes an interactive config generator (`generate-config` command) that allows users or agents to create a YAML config file step-by-step via CLI prompts. This makes onboarding, automation, and integration even easier.
@@ -49,6 +49,8 @@ You can now generate a YAML config file interactively using the CLI:
 ```
 python fs_copy_tool/main.py generate-config
 ```
+`dedup-file-copy-fs` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
+
 This will prompt for all required fields and write a config file for use with `-c`. This is ideal for onboarding, automation, and reducing manual errors. The generated config can then be used with any command that supports `-c`, for example:
 ```
 python fs_copy_tool/main.py one-shot -c config.yaml
@@ -62,99 +64,102 @@ Example generated `config.yaml`:
 command: one-shot
 job_dir: /mnt/job
 job_name: job1
+`dedup-file-copy-fs` is a robust, resumable, and auditable file copy utility for safe, non-redundant media migration between storage pools. It uses an SQLite database to track all state, supports both fixed and removable drives, and provides a fully automated, testable, and auditable workflow for file migration, deduplication, and verification.
 src:
   - /mnt/source1
 dst:
   - /mnt/dest1
-threads: 8
-log_level: DEBUG
+You can now generate a YAML config file interactively using the CLI:
+```
+dedup-file-copy-fs generate-config
 ```
 All CLI options are supported as YAML keys, and CLI arguments always override YAML config values if both are provided. This enables reproducible, declarative, and programmatically generated workflows for AI-driven automation.
 
-## Import Checksums Feature (2025-07-15: Current Implementation)
-The import checksums feature allows you to import file checksums from another compatible job's checksum cache database, enabling fast migration and verification across jobs.
-
+This will prompt for all required fields and write a config file for use with `-c`. This is ideal for onboarding, automation, and reducing manual errors. The generated config can then be used with any command that supports `-c`, for example:
+```
+dedup-file-copy-fs one-shot -c config.yaml
+```
 - **Command:**
-  ```
-  import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db
-  ```
+```
+dedup-file-copy-fs copy -c config.yaml
+```
 - **How it works:**
-  1. Specify the current job directory (`--job-dir`), job name (`--job-name`), and the path to another compatible checksum cache database (`--other-db`).
-  2. The tool reads the `checksum_cache` table from the other database (legacy table import is not supported).
-  3. For each entry, it extracts:
-     - `uid` (volume identifier)
+ **Example usage:**
+ ```
+ dedup-file-copy-fs import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db
+ ```
      - `relative_path` (path relative to volume root)
-     - `size` (file size)
-     - `last_modified` (modification time)
-     - `checksum` (SHA-256 hash)
+ ```
+ dedup-file-copy-fs one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> --dst-index-pool <POOL_PATH> [options]
+ ```
      - `imported_at`, `last_validated`, `is_valid` (if present)
-  4. It inserts or updates these values into the `checksum_cache` table in the current job's checksum cache database, along with an import timestamp and validation status.
-  5. The `checksum_cache` table is used as a fallback for all copy and verification operations: if a file in the current job does not have a checksum in the main tables, the tool will look it up in the cache and use it if available and valid.
-  6. The cache is indexed for fast lookup by checksum and (uid, relative_path).
+ ```
+ dedup-file-copy-fs one-shot -c config.yaml --dst-index-pool <POOL_PATH>
+ ```
   7. This process is robust and idempotent: repeated imports will not create duplicates, and only the latest valid checksum is used.
-
-- **Example usage:**
-  ```
+ ```
+ dedup-file-copy-fs one-shot -c config.yaml
+ ```
   python fs_copy_tool/main.py import-checksums --job-dir <job_dir> --job-name <job_name> --other-db <other_job_dir>/checksum-cache.db
-  ```
-  This will import all checksums from the `checksum_cache` table in the other job's checksum cache database into the current job's `checksum_cache`.
-
+ ```
+ dedup-file-copy-fs generate-config
+ ```
 - **Benefits:**
-  - Avoids recomputing checksums for files that have not changed.
-  - Greatly speeds up migration and verification for large datasets.
-  - Ensures continuity and auditability across multiple migration jobs.
+ ```
+ dedup-file-copy-fs one-shot -c config.yaml --dst-index-pool /mnt/pool
+ ```
 
-## Database Schema
-
-- **checksum_cache** (in `checksum-cache.db`)
+ ```
+ dedup-file-copy-fs one-shot --job-dir jobs/job1 --job-name job1 --src /mnt/src --dst /mnt/dst --dst-index-pool /mnt/pool --threads 4 --log-level DEBUG
+ ```
   - `uid` TEXT
-  - `relative_path` TEXT
-  - `size` INTEGER
-  - `last_modified` INTEGER
+ ```
+ dedup-file-copy-fs init -c config.yaml
+ ```
   - `checksum` TEXT
-  - `imported_at` INTEGER
-  - `last_validated` INTEGER
-  - `is_valid` INTEGER DEFAULT 1
+ ```
+ dedup-file-copy-fs add-source -c config.yaml
+ ```
   - PRIMARY KEY (`uid`, `relative_path`)
-
-(Other tables: `source_files`, `destination_files`, `verification_shallow_results`, `verification_deep_results` are present in `<job-name>.db` for job state and verification.)
-
+ ```
+ dedup-file-copy-fs add-to-destination-index-pool -c config.yaml --dst-index-pool /mnt/pool
+ ```
 - Key Features
-- Block-wise (4KB) file copying with SHA-256 checksums
-- Deduplication: skips files already present in the destination (by checksum)
-- Fully resumable: safely interrupt and resume at any time
+ ```
+ dedup-file-copy-fs analyze -c config.yaml
+ ```
 - All state, logs, and planning files are stored in a dedicated job directory
-- Stateful, file-level job setup and modification
-- CLI commands for all phases: initialization, analysis, checksum, copy, resume, verification, audit, and more
-- Comprehensive verification and audit commands
+ ```
+ dedup-file-copy-fs checksum -c config.yaml
+ ```
 - **One-shot command:** Run the entire workflow in a single step for automation and integration
-- Handles edge cases: partial/incomplete copies, missing files, already copied files, corrupted files (reports errors, does not fix)
-- Cross-platform: Windows & Linux
-- Full automated and manual test suite for all features and edge cases
+ ```
+ dedup-file-copy-fs copy -c config.yaml
+ ```
 
-
-## How It Works
-
+ ```
+ dedup-file-copy-fs status -c config.yaml
+ ```
 You can run the full workflow in a single step using the one-shot command, or follow the step-by-step process below. To simplify setup, use the interactive config generator to create your YAML config file first:
+ ```
+ dedup-file-copy-fs verify -c config.yaml
+ ```
+```
+ ```
+ dedup-file-copy-fs deep-verify -c config.yaml
+ ```
 
+ ```
+ dedup-file-copy-fs import-checksums -c config.yaml
+ ```
 ```
-python fs_copy_tool/main.py generate-config
+ ```
+ dedup-file-copy-fs summary -c config.yaml
+ ```
 ```
-Then use the generated config with any command supporting `-c`.
+ `dedup_file_tools_fs_copy/` — Main source code
 
-
-
-**One-shot (full workflow in one command):**
-```
-python fs_copy_tool/main.py one-shot --job-dir <job_dir> --job-name <job_name> --src <SRC_ROOT> --dst <DST_ROOT> --dst-index-pool <POOL_PATH> [options]
-```
-Or, using a YAML config file for all options:
-```
-python fs_copy_tool/main.py one-shot -c config.yaml --dst-index-pool <POOL_PATH>
-```
-*Runs all steps below in order, including the destination index pool step, stops on error, prints "Done" on success. All CLI options can be set in the YAML file; CLI args override YAML values.*
-
-**About `--dst-index-pool` / `--destination-index-pool`:**
+ Entry point: `dedup-file-copy-fs` (console script) or `python -m dedup_file_tools_fs_copy.main`
 - Use `--dst-index-pool <POOL_PATH>` (or `--destination-index-pool <POOL_PATH>`) to specify a destination index pool for deduplication or multi-destination workflows.
 - This is used in the "Add to Destination Index Pool" step of the workflow.
 - If not provided, the first `--dst` value is used as the pool by default.
@@ -176,22 +181,22 @@ python fs_copy_tool/main.py one-shot -c config.yaml --dst-index-pool <POOL_PATH>
 ### Generate a Config File Interactively
 To create a YAML config file interactively, run:
 ```
-python fs_copy_tool/main.py generate-config
+dedup-file-copy-fs generate-config
 ```
 Follow the prompts to generate a config file for use with `-c`.
 
 ### Run the Full Workflow
 To run the full workflow in one step (recommended for automation):
 ```
-python fs_copy_tool/main.py one-shot -c config.yaml
+dedup-file-copy-fs one-shot -c config.yaml
 ```
 Or use the step-by-step commands:
 ```
-python fs_copy_tool/main.py <command> -c config.yaml
+dedup-file-copy-fs <command> -c config.yaml
 ```
 Or, if installed as a package:
 ```
-fs-copy-tool <command> -c config.yaml
+python -m dedup_file_tools_fs_copy.main <command> -c config.yaml
 ```
 
 
@@ -303,17 +308,17 @@ fs-copy-tool <command> -c config.yaml
    If `--dst-index-pool` is not specified, the first `--dst` value is used as the pool by default.
 3. **Or step-by-step:**
    ```
-   python fs_copy_tool/main.py init -c config.yaml
-   python fs_copy_tool/main.py add-source -c config.yaml
-   python fs_copy_tool/main.py add-to-destination-index-pool -c config.yaml --dst-index-pool /mnt/pool
-   python fs_copy_tool/main.py analyze -c config.yaml
-   python fs_copy_tool/main.py checksum -c config.yaml
-   python fs_copy_tool/main.py copy -c config.yaml
-   python fs_copy_tool/main.py status -c config.yaml
-   python fs_copy_tool/main.py verify -c config.yaml
-   python fs_copy_tool/main.py deep-verify -c config.yaml
-   python fs_copy_tool/main.py import-checksums -c config.yaml
-   python fs_copy_tool/main.py summary -c config.yaml
+   dedup-file-copy-fs init -c config.yaml
+   dedup-file-copy-fs add-source -c config.yaml
+   dedup-file-copy-fs add-to-destination-index-pool -c config.yaml --dst-index-pool /mnt/pool
+   dedup-file-copy-fs analyze -c config.yaml
+   dedup-file-copy-fs checksum -c config.yaml
+   dedup-file-copy-fs copy -c config.yaml
+   dedup-file-copy-fs status -c config.yaml
+   dedup-file-copy-fs verify -c config.yaml
+   dedup-file-copy-fs deep-verify -c config.yaml
+   dedup-file-copy-fs import-checksums -c config.yaml
+   dedup-file-copy-fs summary -c config.yaml
    ```
 
 ## Edge Cases & Robustness
@@ -338,7 +343,7 @@ fs-copy-tool <command> -c config.yaml
 - Standard Python packaging via `setup.py` and `pyproject.toml`
 - Install dependencies with `pip install -r requirements.txt`
 - Install as a package: `pip install .`
-- Entry point: `fs-copy-tool` (console script) or `python -m fs_copy_tool.main`
+- Entry point: `dedup-file-copy-fs` (console script) or `python -m dedup_file_tools_fs_copy.main`
 
 ## License
 MIT License
