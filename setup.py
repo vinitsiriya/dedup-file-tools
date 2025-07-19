@@ -17,7 +17,7 @@ setup(
     entry_points={
         "console_scripts": [
             "dedup-file-copy-fs=dedup_file_tools_fs_copy.main:main",
-            "dedup-file-move-dupes=dedup_file_tools_fs_copy.main:main"
+            "dedup-file-move-dupes=dedup_file_tools_dupes_move.main:main"
         ]
     },
     classifiers=[

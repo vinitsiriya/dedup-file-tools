@@ -36,21 +36,27 @@ def scan_files_on_volume(volume_root, uid_path: UidPathUtil):
     if not mountpoint:
         logging.error(f"Mount point not found for volume {volume_root}")
         return
-    for file in Path(mountpoint).rglob("*"):
-        if file.is_file():
-            uid_path_obj = uid_path.convert_path(str(file))
-            uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
-            if uid is None:
-                logging.error(f"Could not determine UID for file {file}")
-                continue
-            stat = file.stat()
-            logging.info(f"[AGENT][ANALYZE] Indexed: {file}")
-            yield {
-                'uid': uid,
-                'relative_path': rel,
-                'size': stat.st_size,
-                'last_modified': int(stat.st_mtime)
-            }
+    # Count total files for progress bar
+    all_files = list(Path(mountpoint).rglob("*"))
+    total_files = sum(1 for f in all_files if f.is_file())
+    with tqdm(total=total_files, desc=f"Scanning {mountpoint}", unit="file") as pbar:
+        for file in all_files:
+            if file.is_file():
+                uid_path_obj = uid_path.convert_path(str(file))
+                uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
+                if uid is None:
+                    logging.error(f"Could not determine UID for file {file}")
+                    pbar.update(1)
+                    continue
+                stat = file.stat()
+                logging.info(f"[AGENT][ANALYZE] Indexed: {file}")
+                yield {
+                    'uid': uid,
+                    'relative_path': rel,
+                    'size': stat.st_size,
+                    'last_modified': int(stat.st_mtime)
+                }
+                pbar.update(1)
 
 def analyze_volumes(db_path, volume_roots, table):
     import concurrent.futures

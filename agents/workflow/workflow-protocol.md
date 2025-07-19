@@ -5,16 +5,16 @@ This directory contains the canonical workflow protocol documentation for the pr
 
 - `proposal/requirement/` — Requirement proposals (one file per proposal)
 - `proposal/strategy/` — Implementation strategies (one file per strategy)
-  - The `strategy` directory may also contain additional supporting files as needed, such as:
-    - `agents-protocol.md` (a very important file: all strategy, protocol, or instructions specifically for agents must be clearly recorded here; this file can tweak agent behavior and protocols throughout the entire user story and implementation process)
-    - Implementation guidelines
-    - Agent suggestions
-    - Notes
-    - Points to be noticed
-    - Code review notes
-    - Audit notes
-  - All strategy, protocol, or instructions for agents must be documented in `agents-protocol.md` within the strategy directory.
-  - These files should be created as per requirement to support implementation, review, audit, or agent collaboration.
+  - The `strategy` directory may also contain supporting files such as:
+    - `agents-protocol.md` (all strategy, protocol, or instructions for agents must be clearly recorded here; this file can tweak agent behavior and protocols throughout the entire user story and implementation process)
+    - Implementation guidelines, agent suggestions, notes, points to be noticed, code review notes, audit notes, etc.
+    - All strategy, protocol, or instructions for agents must be documented in `agents-protocol.md` within the strategy directory.
+    - These files should be created as per requirement to support implementation, review, audit, or agent collaboration.
+- `implementation-strategies/` — Implementation support and agent context files, organized by task:
+    - `<task>/` — Subdirectory for each implementation task (choose a descriptive task name)
+        - `<label>-agent-context.md` — Reminders, context, or persistent memory for agents during long-running implementations (e.g., directory structure, key design reminders, protocol notes, etc.)
+        - `plan.md`, `dev-notes.md`, `context-<desc>.md`, `instructions.md`, etc. — Any supporting docs for implementation, agent memory, or developer context
+        - These files are created as needed to support agent or human memory, planning, or to provide persistent context for complex or multi-step work. Use as many files as needed per task.
 - `proposal/status.md` — Status tracking for all proposals
 - `user-story/story.md` — User stories
 - `user-story/task.md` — Tasks derived from user stories

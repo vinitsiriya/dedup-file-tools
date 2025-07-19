@@ -58,3 +58,42 @@ def handle_one_shot(job_dir, job_name, dupes_folder, removal_folder, threads=4):
     handle_verify(job_dir, job_name, dupes_folder, removal_folder, threads=threads)
     handle_summary(job_dir, job_name)
     logging.info('One-shot workflow complete.')
+
+
+def handle_import_checksums(job_dir, job_name, other_db, checksum_db=None, batch_size=1000):
+    """
+    Import checksums from another compatible database's checksum_cache table into this job's checksum cache, using batched inserts for scalability.
+    """
+    import sys
+    from tqdm import tqdm
+    db_path = get_db_path_from_job_dir(job_dir, job_name)
+    checksum_db_path = get_checksum_db_path(job_dir, checksum_db)
+    from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+    with RobustSqliteConn(other_db).connect() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checksum_cache'")
+        if not cur.fetchone():
+            logging.error(f"Error: The other database does not have a checksum_cache table.")
+            sys.exit(1)
+        cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
+        rows = cur.fetchall()
+    logging.info(f"Rows to import from other DB: {len(rows)} rows")
+    conn = connect_with_attached_checksum_db(db_path, checksum_db_path)
+    try:
+        cur = conn.cursor()
+        total = len(rows)
+        with tqdm(total=total, desc="Importing checksums", unit="row") as pbar:
+            for i in range(0, total, batch_size):
+                batch = rows[i:i+batch_size]
+                cur.executemany("""
+                    INSERT OR REPLACE INTO checksumdb.checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, batch)
+                pbar.update(len(batch))
+        conn.commit()
+        cur.execute("SELECT COUNT(*) FROM checksumdb.checksum_cache")
+        count = cur.fetchone()[0]
+        logging.info(f"All rows in main job's checksum_cache after import: {count} rows")
+    finally:
+        conn.close()
+    logging.info(f"Imported {len(rows)} checksums from {other_db} into checksum_cache.")

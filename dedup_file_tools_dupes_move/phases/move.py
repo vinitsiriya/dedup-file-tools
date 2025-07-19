@@ -12,11 +12,13 @@ def move_duplicates(db_path, dupes_folder, removal_folder, threads=4):
     import logging
     from dedup_file_tools_commons.utils.uidpath import UidPath, UidPathUtil
     uid_path_util = UidPathUtil()
-    for uid, rel_path, checksum, status in rows:
+    from concurrent.futures import ThreadPoolExecutor
+    from tqdm import tqdm
+    from collections import deque
+    def move_one(args):
+        uid, rel_path, checksum, status = args
         src_path = uid_path_util.reconstruct_path(UidPath(uid, rel_path))
-        # Use only the filename for the destination in the removal folder
         dst_path = Path(removal_folder) / Path(rel_path).name
-        logging.info(f"Attempting to move: src={src_path} -> dst={dst_path}")
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             if os.stat(src_path).st_dev == os.stat(dst_path.parent).st_dev:
@@ -26,7 +28,6 @@ def move_duplicates(db_path, dupes_folder, removal_folder, threads=4):
                 shutil.copy2(src_path, dst_path)
                 Path(src_path).unlink()
                 move_type = 'copy-delete'
-            logging.info(f"Moved file: {src_path} -> {dst_path} [{move_type}]")
             moved_at = int(time.time())
             with RobustSqliteConn(db_path).connect() as conn2:
                 cur2 = conn2.cursor()
@@ -38,8 +39,8 @@ def move_duplicates(db_path, dupes_folder, removal_folder, threads=4):
                     VALUES (?, ?, ?, ?, ?, NULL)
                 """, (uid, rel_path, moved_at, 'move', move_type))
                 conn2.commit()
+            return (uid, rel_path, None)
         except Exception as e:
-            logging.error(f"Error moving file: {src_path} -> {dst_path}: {e}")
             with RobustSqliteConn(db_path).connect() as conn2:
                 cur2 = conn2.cursor()
                 cur2.execute("""
@@ -50,3 +51,31 @@ def move_duplicates(db_path, dupes_folder, removal_folder, threads=4):
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (uid, rel_path, int(time.time()), 'move', 'error', str(e)))
                 conn2.commit()
+            return (uid, rel_path, str(e))
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        futures = deque()
+        row_iter = iter(rows)
+        for _ in range(min(threads * 2, len(rows))):
+            try:
+                row = next(row_iter)
+                futures.append((executor.submit(move_one, row), row))
+            except StopIteration:
+                break
+        pbar = tqdm(total=len(rows), desc="Moving duplicates", unit="file")
+        completed = 0
+        while futures:
+            future, row = futures.popleft()
+            try:
+                uid, rel_path, err = future.result()
+                if err:
+                    logging.error(f"Move error for {uid}:{rel_path}: {err}")
+            except Exception as e:
+                logging.error(f"Thread failed for {row[0]}:{row[1]}: {e}")
+            completed += 1
+            pbar.update(1)
+            try:
+                next_row = next(row_iter)
+                futures.append((executor.submit(move_one, next_row), next_row))
+            except StopIteration:
+                pass
+        pbar.close()

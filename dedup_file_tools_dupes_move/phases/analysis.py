@@ -22,12 +22,54 @@ def find_and_queue_duplicates(db_path, src_root, threads=4):
     checksum_cache = ChecksumCache(conn_factory, uid_path)
     # Step 1: Scan all files
     files = [str(p) for p in Path(src_root).rglob("*") if Path(p).is_file()]
-    # Step 2: Compute checksums in parallel
+    # Step 2: Compute checksums in parallel, robust to errors and hangs
+    import logging
+    from concurrent.futures import as_completed
+    import time
     def compute(path):
-        chksum = checksum_cache.get_or_compute_with_invalidation(path)
-        return (path, chksum)
+        start = time.time()
+        try:
+            chksum = checksum_cache.get_or_compute_with_invalidation(path)
+            elapsed = time.time() - start
+            if elapsed > 30:
+                logging.warning(f"Slow checksum: {path} took {elapsed:.1f}s")
+            return (path, chksum, None)
+        except Exception as e:
+            logging.error(f"Checksum failed for {path}: {e}")
+            return (path, None, str(e))
+    from collections import deque
+    results = []
     with ThreadPoolExecutor(max_workers=threads) as executor:
-        results = list(tqdm(executor.map(compute, files), total=len(files), desc="Checksumming"))
+        futures = deque()
+        file_iter = iter(files)
+        # Prime the pool
+        for _ in range(min(threads * 2, len(files))):
+            try:
+                path = next(file_iter)
+                futures.append((executor.submit(compute, path), path))
+            except StopIteration:
+                break
+        pbar = tqdm(total=len(files), desc="Checksumming", unit="file")
+        completed = 0
+        while futures:
+            future, path = futures.popleft()
+            try:
+                path2, chksum, err = future.result()
+                if err:
+                    logging.error(f"Checksum error for {path2}: {err}")
+                results.append((path2, chksum))
+            except Exception as e:
+                logging.error(f"Thread failed for {path}: {e}")
+                results.append((path, None))
+            completed += 1
+            pbar.update(1)
+            # Submit next file if any remain
+            try:
+                next_path = next(file_iter)
+                futures.append((executor.submit(compute, next_path), next_path))
+            except StopIteration:
+                pass
+        pbar.close()
     # Step 3: Persist all file metadata to dedup_files_pool
     now = int(time.time())
     with connect_with_attached_checksum_db(db_path, checksum_db_path) as conn:

@@ -34,7 +34,13 @@ tasks:
       - pip install -e .[dev]
       
   reinstall:
-    desc: Uninstall and then reinstall the package in editable mode using pip
+    desc: Uninstall and then reinstall the dedup-file-tools package using pipx (and clean up old pip installs)
     cmds:
+      - pipx uninstall dedup-file-tools || true
       - pip uninstall -y fs-copy-tool || true
-      - pip install -e .
+      - pipx install -e .
+
+  dedup-move-dupes:
+    desc: Run the dedup-file-move-dupes CLI (installed via pipx)
+    cmds:
+      - dedup-file-move-dupes --help

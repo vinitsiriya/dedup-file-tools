@@ -13,8 +13,10 @@ def add_to_destination_index_pool(db_path, dst_root):
     from tqdm import tqdm
     count = 0
     # dst_root.rglob("*") is already an iterator, so this is scalable
-    with tqdm(desc=f"Indexing destination pool from {dst_root}", unit="file") as pbar:
-        for path in dst_root.rglob("*"):
+    all_files = list(dst_root.rglob("*"))
+    total_files = sum(1 for f in all_files if f.is_file())
+    with tqdm(total=total_files, desc=f"Indexing destination pool from {dst_root}", unit="file") as pbar:
+        for path in all_files:
             if path.is_file():
                 stat = path.stat()
                 pool.add_or_update_file(str(path), stat.st_size, int(stat.st_mtime))

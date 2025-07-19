@@ -6,12 +6,12 @@ from dedup_file_tools_commons.utils.logging_config import setup_logging
 from dedup_file_tools_dupes_move.utils.config_loader import load_yaml_config, merge_config_with_args
 from dedup_file_tools_dupes_move.handlers import (
     handle_init, handle_add_to_lookup_pool, handle_analyze, handle_preview_summary,
-    handle_move, handle_verify, handle_summary, handle_one_shot
+    handle_move, handle_verify, handle_summary, handle_one_shot, handle_import_checksums
 )
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Deduplication/dupes remover tool: scan, group, and move duplicates.")
-    parser.add_argument('--log-level', default='INFO', help='Logging level')
+    parser.add_argument('--log-level', default='WARNING', help='Logging level')
     parser.add_argument('--config', default=None, help='YAML config file')
     subparsers = parser.add_subparsers(dest='command')
 
@@ -52,6 +52,12 @@ def main(argv=None):
     parser_summary.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_summary.add_argument('--job-name', required=True, help='Name for this deduplication job')
 
+    parser_import = subparsers.add_parser('import-checksums', help='Import checksums from another compatible database')
+    parser_import.add_argument('--job-dir', required=True, help='Directory to store job state and database')
+    parser_import.add_argument('--job-name', required=True, help='Name for this deduplication job')
+    parser_import.add_argument('--other-db', required=True, help='Path to other compatible SQLite database (must have checksum_cache table)')
+    parser_import.add_argument('--checksum-db', required=False, help='Custom checksum DB path (default: <job-dir>/checksum-cache.db)')
+
     parser_one_shot = subparsers.add_parser('one-shot', help='Run the full deduplication workflow in one command')
     parser_one_shot.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_one_shot.add_argument('--job-name', required=True, help='Name for this deduplication job')
@@ -85,5 +91,7 @@ def main(argv=None):
         handle_summary(args.job_dir, args.job_name)
     elif args.command == 'one-shot':
         handle_one_shot(args.job_dir, args.job_name, args.lookup_pool, args.dupes_folder, threads=args.threads)
+    elif args.command == 'import-checksums':
+        handle_import_checksums(args.job_dir, args.job_name, args.other_db, checksum_db=getattr(args, 'checksum_db', None))
     else:
         parser.print_help()

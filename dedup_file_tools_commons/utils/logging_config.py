@@ -9,11 +9,15 @@ def setup_logging(job_dir=None, log_level=None):
     log_level can be passed as a string (e.g., 'INFO', 'DEBUG').
     If not provided, will use LOG_LEVEL environment variable, or default to 'INFO'.
     """
-    if log_level is None:
-        log_level = os.environ.get('LOG_LEVEL', 'WARNING').upper()
-    else:
-        log_level = str(log_level).upper()
-    numeric_level = getattr(logging, log_level, logging.WARNING)
+    # File logs: always INFO or as specified
+    file_log_level = os.environ.get('FILE_LOG_LEVEL', 'INFO').upper()
+    file_numeric_level = getattr(logging, file_log_level, logging.INFO)
+    # Console logs: always WARNING or as specified
+    console_log_level = os.environ.get('CONSOLE_LOG_LEVEL', 'WARNING').upper()
+    console_numeric_level = getattr(logging, console_log_level, logging.WARNING)
+    # If log_level is provided, override both
+    if log_level is not None:
+        file_numeric_level = console_numeric_level = getattr(logging, str(log_level).upper(), logging.INFO)
     if job_dir:
         logs_dir = os.path.join(job_dir, 'logs')
         os.makedirs(logs_dir, exist_ok=True)
@@ -25,12 +29,12 @@ def setup_logging(job_dir=None, log_level=None):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     fh = logging.FileHandler(log_file, encoding='utf-8')
-    fh.setLevel(numeric_level)
+    fh.setLevel(file_numeric_level)
     fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
     import sys
     ch = logging.StreamHandler(sys.stdout)
     ch.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-    ch.setLevel(numeric_level)
+    ch.setLevel(console_numeric_level)
     logger.handlers = []
     logger.addHandler(fh)
     logger.addHandler(ch)

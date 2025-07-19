@@ -3,10 +3,12 @@
 ## Purpose
 Manual tests are used for interactive or exploratory testing, especially for scenarios not easily automated.
 
-## Location
-- Manual test scripts: `manual_tests/` (each scenario in its own subdirectory)
+
+## Location & Organization
+- Manual test scripts: `manual_tests/<package>/` (each package/module gets its own subdirectory, e.g., `manual_tests/dedup_file_tools_dupes_move/`, `manual_tests/dedup_file_tools_fs_copy/`)
+- Each scenario should be in its own subdirectory under the relevant package/module.
 - Fixture generator for manual tests: `scripts/generate_fixtures_manual.py`
-- **All manual test operations should be performed in the `.temp/manual_tests/` directory to avoid polluting the main workspace.**
+- **All manual test operations should be performed in the `.temp/manual_tests/<package>/` directory to avoid polluting the main workspace.**
 
 ## How to Run
 - On Windows, run the relevant script in `manual_tests/<scenario>/` in PowerShell.
@@ -16,14 +18,17 @@ Manual tests are used for interactive or exploratory testing, especially for sce
 - All job databases are now named `<job-name>.db` in the job directory. All CLI commands require `--job-name`.
 - The checksum cache database is always named `checksum-cache.db` in the job directory.
 
+
 ## Guidelines
+- Organize manual tests by package/module for clarity and scalability.
 - Use manual tests to verify UI/CLI feedback, logging, and edge cases.
 - Record observations and issues in the appropriate planning or log files.
 - Use manual tests to validate new features before automating them.
-- Always perform manual test operations in the `.temp/manual_tests/` directory.
+- Always perform manual test operations in the `.temp/manual_tests/<package>/` directory.
+
 
 ## Extending
-- Add new manual test scripts in the `manual_tests/` directory for each scenario as needed.
+- Add new manual test scripts in the appropriate `manual_tests/<package>/` directory for each scenario as needed.
 - Document manual test procedures and expected outcomes in this file or in the planning docs.
 
 ## Stateful CLI Manual Testing
@@ -55,9 +60,10 @@ Manual tests are used for interactive or exploratory testing, especially for sce
 - Test with large files, deeply nested directories, and files with special characters in the destination.
 - Verify that the pool index and deduplication logic handle all cases robustly.
 
+
 ### 5. Manual Database Inspection
-- Use a SQLite browser to inspect the `destination_pool_files` table after each operation.
+- Use a SQLite browser to inspect the relevant tables (e.g., `destination_pool_files`, `dedup_files_pool`, etc.) after each operation.
 - Confirm that all expected files are indexed and deduplication logic is correct.
 
 ---
-To add more scenarios, copy and adapt scripts in the `manual_tests/` directory.
+To add more scenarios, copy and adapt scripts in the appropriate `manual_tests/<package>/` directory.
