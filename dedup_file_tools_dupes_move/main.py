@@ -9,6 +9,8 @@ from dedup_file_tools_dupes_move.handlers import (
     handle_move, handle_verify, handle_summary, handle_one_shot, handle_import_checksums
 )
 
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Deduplication/dupes remover tool: scan, group, and move duplicates.")
     parser.add_argument('--log-level', default='WARNING', help='Logging level')
@@ -34,7 +36,6 @@ def main(argv=None):
     parser_preview.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_preview.add_argument('--job-name', required=True, help='Name for this deduplication job')
 
-
     parser_move = subparsers.add_parser('move', help='Move duplicate files to the dupes folder (or remove)')
     parser_move.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_move.add_argument('--job-name', required=True, help='Name for this deduplication job')
@@ -52,6 +53,14 @@ def main(argv=None):
 
     parser_import = subparsers.add_parser('import-checksums', help='Import checksums from another compatible database')
     parser_import.add_argument('--job-dir', required=True, help='Directory to store job state and database')
+
+    args = parser.parse_args(argv)
+
+    # Only set up logging if job_dir is present in args
+    job_dir = getattr(args, 'job_dir', None)
+    log_level = getattr(args, 'log_level', 'WARNING')
+    if job_dir is not None:
+        setup_logging(job_dir, log_level)
     parser_import.add_argument('--job-name', required=True, help='Name for this deduplication job')
     parser_import.add_argument('--other-db', required=True, help='Path to other compatible SQLite database (must have checksum_cache table)')
     parser_import.add_argument('--checksum-db', required=False, help='Custom checksum DB path (default: <job-dir>/checksum-cache.db)')
@@ -70,7 +79,12 @@ def main(argv=None):
     if args.config:
         config_dict = load_yaml_config(args.config)
         args = merge_config_with_args(args, config_dict, parser)
-    setup_logging(args.job_dir, args.log_level)
+
+    # Only set up logging if job_dir is present in args
+    job_dir = getattr(args, 'job_dir', None)
+    log_level = getattr(args, 'log_level', 'WARNING')
+    if job_dir is not None:
+        setup_logging(job_dir, log_level)
 
     def get_lookup_pool_from_db(job_dir, job_name):
         import sqlite3
@@ -146,5 +160,12 @@ def main(argv=None):
         handle_one_shot(args.job_dir, args.job_name, args.lookup_pool, args.dupes_folder, threads=args.threads)
     elif args.command == 'import-checksums':
         handle_import_checksums(args.job_dir, args.job_name, args.other_db, checksum_db=getattr(args, 'checksum_db', None))
+
     else:
         parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
+
+

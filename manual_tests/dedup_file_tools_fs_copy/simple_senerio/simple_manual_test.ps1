@@ -1,94 +1,62 @@
-# Manual Test Scenario: Simple Deduplication
-# This script is self-contained and uses .temp/manual_tests/simple_senerio as its workspace.
+# Manual Test Script: Simple Deduplication (dedup_file_tools_dupes_move)
+# This script is self-contained and uses .temp/manual_tests/dedup_file_tools_dupes_move/simple_scenario as its workspace.
 #
-# To run: pwsh manual_tests/simple_senerio/simple_manual_test.ps1
+# To run: pwsh manual_tests/dedup_file_tools_dupes_move/simple_scenario/simple_manual_test.ps1
 #
-# This script exercises the full workflow: fixture generation, add-source, add-file, remove-file, checksum, copy, resume, status, log, verify, and deep-verify.
+# This script exercises the full deduplication workflow: fixture generation, init, analyze, move, verify, summary.
 #
-# - Source and destination directories are created under .temp/manual_tests/simple_senerio
-# - Duplicate files in different directories are included for deduplication testing
-# - All results and logs are in .temp/manual_tests/simple_senerio/job
+# All results and logs are in .temp/manual_tests/dedup_file_tools_dupes_move/simple_scenario/job
 #
-# Review the output and .temp/manual_tests/simple_senerio/dst for results.
-#
-# To add more scenarios, copy and adapt this script in the manual_tests/ directory.
+# Review the output and .temp/manual_tests/dedup_file_tools_dupes_move/simple_scenario/dupes for results.
 
 $ErrorActionPreference = 'Stop'
 
-# Set up .temp/manual_tests/simple_senerio as workspace
-$workspace = ".temp/manual_tests/simple_senerio"
+# Set up workspace
+$workspace = ".temp/manual_tests/dedup_file_tools_dupes_move/simple_scenario"
 if (Test-Path $workspace) { Remove-Item -Recurse -Force $workspace }
 New-Item -ItemType Directory -Path $workspace | Out-Null
 
-# Create dummy source and destination directories
-$src = "$workspace/src"
-$dst = "$workspace/dst"
-New-Item -ItemType Directory -Path $src | Out-Null
-New-Item -ItemType Directory -Path $dst | Out-Null
+# Create pool and dupes directories
+$pool = "$workspace/pool"
+$dupes = "$workspace/dupes"
+$job = "$workspace/job"
+New-Item -ItemType Directory -Path $pool | Out-Null
+New-Item -ItemType Directory -Path $dupes | Out-Null
+New-Item -ItemType Directory -Path $job | Out-Null
 
-# Generate test files in source using fixture generator script
-python scripts/generate_fixtures_manual.py --src $src
+# Generate test files in pool using fixture generator script
+python manual_tests/dedup_file_tools_dupes_move/generate_fixtures_manual.py --pool $pool
 
-$venvPython = if (Test-Path ".\venv\Scripts\python.exe") { ".\venv\Scripts\python.exe" } else { "python" }
+# Show files before move
+Write-Host "`n=== Pool before move ==="
+Get-ChildItem -Path $pool -Recurse | Select-Object FullName
 
-# Initialize job directory (protocol: always use a dedicated job dir)
-& $venvPython fs_copy_tool/main.py init --job-dir $workspace/job
-
-# Instead of analyze, use add-source to incrementally add files to the job state
-& $venvPython fs_copy_tool/main.py add-source --job-dir $workspace/job --src $src
-
-# Optionally, demonstrate add-file for a single file
-$singleFile = Get-ChildItem $src -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -First 1
-if ($singleFile) {
-    & $venvPython fs_copy_tool/main.py add-file --job-dir $workspace/job --file $singleFile.FullName
+# Setup Python from .venv
+$venvPython = ".\.venv\Scripts\python.exe"
+if (-not (Test-Path $venvPython)) {
+    Write-Host "ERROR: .\.venv\Scripts\python.exe not found. Please create a virtual environment in .\.venv and install your package with 'pip install -e .'"
+    exit 1
 }
 
-# List files in the job state
-& $venvPython fs_copy_tool/main.py list-files --job-dir $workspace/job
+# Deduplication workflow
+& $venvPython -m dedup_file_tools_dupes_move.main init --job-dir $job --job-name testjob
+& $venvPython -m dedup_file_tools_dupes_move.main analyze --job-dir $job --job-name testjob --lookup-pool $pool
+& $venvPython -m dedup_file_tools_dupes_move.main move --job-dir $job --job-name testjob --dupes-folder $dupes
+& $venvPython -m dedup_file_tools_dupes_move.main verify --job-dir $job --job-name testjob --lookup-pool $pool --dupes-folder $dupes
+& $venvPython -m dedup_file_tools_dupes_move.main summary --job-dir $job --job-name testjob
 
-# Remove a file from the job state (demonstrate remove-file)
-if ($singleFile) {
-    & $venvPython fs_copy_tool/main.py remove-file --job-dir $workspace/job --file $singleFile.FullName
-    & $venvPython fs_copy_tool/main.py list-files --job-dir $workspace/job
+# Show files after move
+Write-Host "`n=== Pool after move ==="
+Get-ChildItem -Path $pool -Recurse | Select-Object FullName
+Write-Host "`n=== Dupes after move ==="
+Get-ChildItem -Path $dupes -Recurse | Select-Object FullName
+
+# Show summary CSV
+Write-Host "`n=== Summary CSV ==="
+if (Test-Path "$job/dedup_move_summary.csv") {
+    Get-Content "$job/dedup_move_summary.csv"
+} else {
+    Write-Host "Summary CSV not found: $job/dedup_move_summary.csv"
 }
 
-# Analyze destination only (since source files are now added incrementally)
-& $venvPython fs_copy_tool/main.py analyze --job-dir $workspace/job --dst $dst
-
-# Compute checksums for both source and destination (protocol: both tables)
-& $venvPython fs_copy_tool/main.py checksum --job-dir $workspace/job --table source_files --threads 2
-& $venvPython fs_copy_tool/main.py checksum --job-dir $workspace/job --table destination_files --threads 2
-
-# Copy files (protocol: must use progress bars and threads)
-& $venvPython fs_copy_tool/main.py copy --job-dir $workspace/job --src $src --dst $dst --threads 2
-
-# Simulate interruption: delete one file from destination
-$deletedFile = Get-ChildItem $dst | Select-Object -First 1
-if ($deletedFile) {
-    Write-Host "Simulating interruption: deleting $($deletedFile.Name) from destination."
-    Remove-Item $deletedFile.FullName
-}
-
-# Resume copy (should only re-copy the missing file)
-& $venvPython fs_copy_tool/main.py copy --job-dir $workspace/job --src $src --dst $dst --threads 2
-
-# Show status and log (protocol: must check results)
-& $venvPython fs_copy_tool/main.py status --job-dir $workspace/job
-& $venvPython fs_copy_tool/main.py log --job-dir $workspace/job
-
-# Run shallow and deep verification as separate phases
-& $venvPython fs_copy_tool/main.py verify --job-dir $workspace/job --src $src --dst $dst
-& $venvPython fs_copy_tool/main.py deep-verify --job-dir $workspace/job --src $src --dst $dst
-
-# Print verification summary and full history using the new CLI commands
-Write-Host "\nShallow verification status summary (latest for each file):"
-& $venvPython fs_copy_tool/main.py verify-status-summary --job-dir $workspace/job
-Write-Host "\nShallow verification status full (all history):"
-& $venvPython fs_copy_tool/main.py verify-status-full --job-dir $workspace/job
-Write-Host "\nDeep verification status summary (latest for each file):"
-& $venvPython fs_copy_tool/main.py deep-verify-status-summary --job-dir $workspace/job
-Write-Host "\nDeep verification status full (all history):"
-& $venvPython fs_copy_tool/main.py deep-verify-status-full --job-dir $workspace/job
-
-Write-Host "Manual test completed. Check $dst for copied files and $workspace/job for database/logs."
-Write-Host "Review logs for per-file and overall progress bar output as required by protocol."
+Write-Host "`nManual test completed. Check $dupes for moved files and $job for database/logs."
