@@ -21,10 +21,6 @@ def main(argv=None):
     parser_init.add_argument('--job-dir', required=True, help='Directory to store job state and database')
     parser_init.add_argument('--job-name', required=True, help='Name for this deduplication job')
 
-    parser_add_lookup = subparsers.add_parser('add-to-lookup-pool', help='(Optional) Add a folder to the lookup pool for duplicate scanning')
-    parser_add_lookup.add_argument('--job-dir', required=True, help='Directory to store job state and database')
-    parser_add_lookup.add_argument('--job-name', required=True, help='Name for this deduplication job')
-    parser_add_lookup.add_argument('--lookup-pool', required=True, help='Path to folder to scan for duplicates')
 
     parser_analyze = subparsers.add_parser('analyze', help='Scan the lookup pool, compute checksums, and group duplicates')
     parser_analyze.add_argument('--job-dir', required=True, help='Directory to store job state and database')
@@ -103,8 +99,7 @@ def main(argv=None):
 
     if args.command == 'init':
         handle_init(args.job_dir, args.job_name)
-    elif args.command == 'add-to-lookup-pool':
-        handle_add_to_lookup_pool(args.job_dir, args.job_name, args.lookup_pool)
+    # 'add-to-lookup-pool' command removed as per request
     elif args.command == 'analyze':
         # Store lookup_pool in job_metadata for later phases
         handle_analyze(args.job_dir, args.job_name, args.lookup_pool, threads=args.threads)
