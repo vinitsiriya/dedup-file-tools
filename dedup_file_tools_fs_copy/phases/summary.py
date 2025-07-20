@@ -27,7 +27,7 @@ def summary_phase(db_path, job_dir):
     """
     import logging
     logger = logging.getLogger()
-    logger.info("==== SUMMARY PHASE: START ====")
+    logger.info("==== SUMMARY PHASE ====")
     logger.info(f"Job directory: {job_dir}")
     log_path = os.path.join(job_dir, 'dedup_file_tools_fs_copy.log')
     if os.path.exists(log_path):
@@ -35,11 +35,9 @@ def summary_phase(db_path, job_dir):
     else:
         logger.warning("Log file not found in job directory.")
     try:
-        logger.info("Opening database connection...")
         conn = RobustSqliteConn(db_path).connect()
-        logger.info("Database connection opened.")
         cur = conn.cursor()
-        logger.info("Querying for files with errors or not done...")
+        # Collect files with errors or not done from copy_status table
         cur.execute("""
             SELECT s.uid, s.relative_path, cs.status as copy_status, cs.error_message
             FROM source_files s
@@ -47,24 +45,19 @@ def summary_phase(db_path, job_dir):
             WHERE cs.status != 'done'
         """)
         rows = cur.fetchall()
-        logger.info(f"Query complete. {len(rows)} row(s) found.")
         if not rows:
             logger.info("All files copied successfully. No errors or pending files.")
         else:
             logger.warning(f"{len(rows)} file(s) with errors or not done. See CSV report.")
         # Write CSV
         csv_path = os.path.join(job_dir, 'summary_report.csv')
-        logger.info(f"Opening CSV file for writing: {csv_path}")
         with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(['uid', 'relative_path', 'copy_status', 'error_message'])
             for row in rows:
                 writer.writerow(row)
-                logger.debug(f"Wrote row to CSV: {row}")
-        logger.info(f"CSV report generated: {csv_path} ({len(rows)} rows)")
-        logger.info("Closing database connection...")
+        logger.info(f"CSV report generated: {csv_path}")
         conn.close()
-        logger.info("Database connection closed.")
     except Exception as e:
         logger.exception(f"Exception in summary_phase: {e}")
-    logger.info("==== SUMMARY PHASE: END ====")
+    logger.info("=======================\n")
