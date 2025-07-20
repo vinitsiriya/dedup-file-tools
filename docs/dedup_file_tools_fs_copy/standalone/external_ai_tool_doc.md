@@ -331,8 +331,7 @@ python -m dedup_file_tools_fs_copy.main <command> -c config.yaml
 - Run all tests with your preferred test runner (e.g., `pytest`)
 - Full E2E, integration, and unit test coverage for all features and edge cases
 
-## Project Structure
-- `fs_copy_tool/` — Main source code
+- `dedup_file_tools_fs_copy/` — Main source code
 - `tests/` — Automated tests
 - `e2e_tests/` — End-to-end and integration tests
 - `docs/` — Documentation
