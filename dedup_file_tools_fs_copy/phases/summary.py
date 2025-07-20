@@ -29,11 +29,17 @@ def summary_phase(db_path, job_dir):
     logger = logging.getLogger()
     logger.info("==== SUMMARY PHASE ====")
     logger.info(f"Job directory: {job_dir}")
-    log_path = os.path.join(job_dir, 'dedup_file_tools_fs_copy.log')
-    if os.path.exists(log_path):
-        logger.info(f"Log file: {log_path}")
+    logs_dir = os.path.join(job_dir, 'logs')
+    if os.path.isdir(logs_dir):
+        log_files = [f for f in os.listdir(logs_dir) if f.endswith('.log')]
+        if log_files:
+            logger.info(f"Log files in {logs_dir}:")
+            for log_file in log_files:
+                logger.info(f"  {os.path.join(logs_dir, log_file)}")
+        else:
+            logger.warning(f"No log files found in {logs_dir}.")
     else:
-        logger.warning("Log file not found in job directory.")
+        logger.warning(f"Logs directory not found: {logs_dir}")
     try:
         conn = RobustSqliteConn(db_path).connect()
         cur = conn.cursor()

@@ -20,16 +20,18 @@ def setup_test_db(tmp_path):
     return str(db_path)
 
 def test_add_and_exists(tmp_path):
+    import sqlite3
     db_path = setup_test_db(tmp_path)
     uid_path = UidPathUtil()
-    pool = DestinationPoolIndex(db_path, uid_path)
+    pool = DestinationPoolIndex(uid_path)
     # Create a temp file
     file_path = tmp_path / "file1.txt"
     file_path.write_text("hello world")
     stat = file_path.stat()
-    pool.add_or_update_file(str(file_path), stat.st_size, int(stat.st_mtime))
-    uid_path_obj = uid_path.convert_path(str(file_path))
-    uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
-    assert pool.exists(uid, str(rel))
-    # Should not exist for a different file
-    assert not pool.exists(uid, "not_a_file.txt")
+    with sqlite3.connect(db_path) as conn:
+        pool.add_or_update_file(conn, str(file_path), stat.st_size, int(stat.st_mtime))
+        uid_path_obj = uid_path.convert_path(str(file_path))
+        uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
+        assert pool.exists(conn, uid, str(rel))
+        # Should not exist for a different file
+        assert not pool.exists(conn, uid, "not_a_file.txt")

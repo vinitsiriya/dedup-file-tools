@@ -1,4 +1,4 @@
-import sqlite3
+
 from dedup_file_tools_fs_copy.utils.destination_pool_cli import add_to_destination_index_pool
 from dedup_file_tools_fs_copy.utils.destination_pool import DestinationPoolIndex
 from dedup_file_tools_commons.utils.uidpath import UidPathUtil
@@ -6,6 +6,7 @@ from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 def test_add_to_destination_index_pool(tmp_path):
     db_path = tmp_path / "test.db"
     # Create the destination_pool_files table
+    import sqlite3
     conn = sqlite3.connect(db_path)
     conn.execute("""
         CREATE TABLE destination_pool_files (
@@ -29,11 +30,13 @@ def test_add_to_destination_index_pool(tmp_path):
     # Run the CLI logic
     add_to_destination_index_pool(str(db_path), str(dst_root))
     # Check that both files are in the pool index
+    import sqlite3
     uid_path = UidPathUtil()
-    pool = DestinationPoolIndex(str(db_path), uid_path)
+    pool = DestinationPoolIndex(uid_path)
     uid_path_obj1 = uid_path.convert_path(str(file1))
     uid1, rel1 = uid_path_obj1.uid, uid_path_obj1.relative_path
     uid_path_obj2 = uid_path.convert_path(str(file2))
     uid2, rel2 = uid_path_obj2.uid, uid_path_obj2.relative_path
-    assert pool.exists(uid1, str(rel1))
-    assert pool.exists(uid2, str(rel2))
+    with sqlite3.connect(db_path) as conn:
+        assert pool.exists(conn, uid1, str(rel1))
+        assert pool.exists(conn, uid2, str(rel2))

@@ -1,3 +1,4 @@
+from dedup_file_tools_commons.utils.logging_config import setup_logging
 """
 File: dedup_file_tools_fs_copy/main.py
 Main Orchestration & CLI Entry Point
@@ -29,16 +30,7 @@ def handle_add_to_destination_index_pool(args):
 import argparse
 import logging
 import sys
-
-log_level = None
-for i, arg in enumerate(sys.argv):
-    if arg == '--log-level' and i + 1 < len(sys.argv):
-        log_level = sys.argv[i + 1]
-        break
-from dedup_file_tools_commons.utils.logging_config import setup_logging
-setup_logging(log_level=log_level)
 import os
-import sys
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from pathlib import Path
 from dedup_file_tools_fs_copy.db import init_db
@@ -47,7 +39,7 @@ from dedup_file_tools_fs_copy.phases.copy import copy_files
 from dedup_file_tools_fs_copy.phases.verify import shallow_verify_files, deep_verify_files
 from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
 from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
-from dedup_file_tools_commons.utils.logging_config import setup_logging
+## removed duplicate import of setup_logging
 
 def init_job_dir(job_dir, job_name, checksum_db=None):
     from dedup_file_tools_fs_copy.db import init_db
@@ -343,10 +335,10 @@ def parse_args(args=None):
 
 def main(args=None):
     parsed_args = parse_args(args)
-    # Always set up logging with job_dir if available
+    # Set up logging only once, prefer file logging if job_dir is available
     job_dir = getattr(parsed_args, 'job_dir', None)
-    from dedup_file_tools_commons.utils.logging_config import setup_logging
-    setup_logging(job_dir)
+    log_level = getattr(parsed_args, 'log_level', None)
+    setup_logging(log_level=log_level, job_dir=job_dir)
     logging.info(f"[AGENT][MAIN] main() called with args: {args}")
     if getattr(parsed_args, 'command', None) == 'generate-config':
         logging.info("[AGENT][MAIN] Entering interactive config generator phase.")
@@ -383,34 +375,13 @@ def handle_copy(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     init_db(db_path)
-    from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
-    from tqdm import tqdm
-    def conn_factory():
-        return RobustSqliteConn(db_path).connect()
-    checksum_cache = ChecksumCache(conn_factory, UidPathUtil())
-    # Get all files in the destination pool
-    with conn_factory() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT uid, relative_path FROM destination_pool_files")
-        pool_files = cur.fetchall()
-    if pool_files:
-        from concurrent.futures import ThreadPoolExecutor
-        from threading import Lock
-        pbar_lock = Lock()
-        uid_path = UidPathUtil()
-        def process_pool_file(args):
-            uid, rel_path = args
-            uid_path_obj = UidPath(uid, rel_path)
-            abs_path = uid_path.reconstruct_path(uid_path_obj)
-            if abs_path is None:
-                logging.warning(f"[COPY][POOL] Skipping file: could not reconstruct path for uid={uid}, rel_path={rel_path}")
-                return
-            checksum_cache.get_or_compute_with_invalidation(abs_path)
-            with pbar_lock:
-                pbar.update(1)
-        with tqdm(total=len(pool_files), desc="Updating pool checksums") as pbar:
-            with ThreadPoolExecutor() as executor:
-                list(executor.map(process_pool_file, pool_files))
+    # Ensure destination pool checksums before copy
+    from dedup_file_tools_fs_copy.phases.ensure_destination_pool import ensure_destination_pool_checksums
+    ensure_destination_pool_checksums(
+        job_dir=args.job_dir,
+        job_name=args.job_name,
+        checksum_db=checksum_db_path
+    )
     # Step 2: Always check both path and pool deduplication in copy_files
     copy_files(db_path, args.src, args.dst, threads=args.threads)
     return 0
@@ -568,81 +539,27 @@ def handle_remove_file(args):
     return 0
 
 def handle_checksum(args):
+    from dedup_file_tools_fs_copy.phases.checksum import run_checksum_table
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     init_db(db_path)
-    uid_path = UidPathUtil()
-    def conn_factory():
-        return RobustSqliteConn(checksum_db_path).connect()
-    checksum_cache = ChecksumCache(conn_factory, uid_path)
-    import sqlite3
-    with sqlite3.connect(db_path) as conn:
-        cur = conn.cursor()
-        cur.execute(f"SELECT uid, relative_path, size, last_modified FROM {args.table}")
-        rows = cur.fetchall()
-    from tqdm import tqdm
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    import logging
-    def process_row(row):
-        uid, rel_path, size, last_modified = row
-        uid_path_obj = UidPath(uid, rel_path)
-        file_path = uid_path.reconstruct_path(uid_path_obj)
-        logging.info(f"[handle_checksum] Processing: uid={uid}, rel_path={rel_path}, resolved_path={file_path}")
-        if not file_path or not file_path.exists():
-            logging.info(f"[handle_checksum] File not found or does not exist: {file_path}")
-            return None
-        logging.info(f"[handle_checksum] Calling get_or_compute_with_invalidation for {file_path}")
-        checksum = checksum_cache.get_or_compute_with_invalidation(str(file_path))
-        logging.info(f"[handle_checksum] Checksum for {file_path}: {checksum}")
-        return True if checksum else None
-    with tqdm(total=len(rows), desc=f"Checksumming {args.table}") as pbar:
-        with ThreadPoolExecutor(max_workers=args.threads) as executor:
-            futures = [executor.submit(process_row, row) for row in rows]
-            for f in as_completed(futures):
-                pbar.update(1)
-    return 0
+    return run_checksum_table(
+        db_path=db_path,
+        checksum_db_path=checksum_db_path,
+        table=args.table,
+        threads=getattr(args, 'threads', 4),
+        no_progress=getattr(args, 'no_progress', False)
+    )
 
 def handle_import_checksums(args):
+    from dedup_file_tools_fs_copy.phases.import_checksum import run_import_checksums
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
     other_db_path = args.other_db
-    # Validate schema of other_db
-    with RobustSqliteConn(other_db_path).connect() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='checksum_cache'")
-        if not cur.fetchone():
-            logging.error(f"Error: The other database does not have a checksum_cache table.")
-            sys.exit(1)
-        # Import all rows from other checksum_cache
-        cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
-        rows = cur.fetchall()
-    # Insert into attached checksum DB
-    logging.info(f"[AGENT][MAIN] Rows to import from other DB: {len(rows)} rows")
-    from tqdm import tqdm
-    conn = connect_with_attached_checksum_db(db_path, checksum_db_path)
-    try:
-        cur = conn.cursor()
-        with tqdm(total=len(rows), desc="Importing checksums", unit="row") as pbar:
-            for row in rows:
-                cur.execute("""
-                    INSERT OR REPLACE INTO checksumdb.checksum_cache (uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, row)
-                pbar.update(1)
-        conn.commit()
-        # Log all rows in checksum_cache after import
-        cur.execute("SELECT COUNT(*) FROM checksumdb.checksum_cache")
-        count = cur.fetchone()[0]
-        logging.info(f"[AGENT][MAIN] All rows in main job's checksum_cache after import: {count} rows")
-    finally:
-        conn.close()
-    logging.info(f"[AGENT][MAIN] Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
-    return 0
+    return run_import_checksums(db_path, checksum_db_path, other_db_path)
 
 def run_main_command(args):
     if getattr(args, 'command', None) == 'one-shot':
-        # Set up logging
-        setup_logging(log_level=getattr(args, 'log_level', 'INFO'))
         # Step 1: Init job dir
         try:
             init_job_dir(args.job_dir, args.job_name, getattr(args, 'checksum_db', None))
@@ -671,7 +588,7 @@ def run_main_command(args):
         if rc is not None and rc != 0:
             print("Error in add-source step.")
             return rc
-        # Step 4: Add to destination index pool
+        # Step 4: Add to destination index pool and ensure destination pool checksums
         dst_index_pool = getattr(args, 'dst_index_pool', None) or (args.dst[0] if isinstance(args.dst, list) else args.dst)
         class AddPoolArgs: pass
         add_pool_args = AddPoolArgs()
@@ -682,6 +599,15 @@ def run_main_command(args):
         if rc is not None and rc != 0:
             print("Error in add-to-destination-index-pool step.")
             return rc
+        # Ensure destination pool checksums using the new explicit function
+        from dedup_file_tools_fs_copy.phases.ensure_destination_pool import ensure_destination_pool_checksums
+        db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
+        checksum_db_path = get_checksum_db_path(args.job_dir, getattr(args, 'checksum_db', None))
+        ensure_destination_pool_checksums(
+            job_dir=args.job_dir,
+            job_name=args.job_name,
+            checksum_db=checksum_db_path
+        )
         # Step 5: Analyze
         class AnalyzeArgs: pass
         analyze_args = AnalyzeArgs()
@@ -798,7 +724,6 @@ def run_main_command(args):
     return 1
 
 if __name__ == "__main__":
-    setup_logging()
     logging.info("[AGENT][MAIN] Program started.")
     try:
         main()

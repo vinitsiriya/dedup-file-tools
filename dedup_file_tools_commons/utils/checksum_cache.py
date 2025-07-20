@@ -1,5 +1,5 @@
-from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from typing import Optional
 from pathlib import Path
 from dedup_file_tools_commons.utils.fileops import compute_sha256
@@ -98,7 +98,12 @@ class ChecksumCache:
                 row = cur.fetchone()
             logging.info(f"[ChecksumCache] Cache query result for {file_path}: {row}")
         except Exception as e:
+            import traceback
             logging.error(f"[ChecksumCache] Exception during cache query for {file_path}: {e}")
+            # Log the exception traceback (where the error was raised)
+            logging.error("[ChecksumCache] Exception traceback:\n" + traceback.format_exc())
+            # Log the current stack (from the caller)
+            logging.error("[ChecksumCache] Full call stack:\n" + ''.join(traceback.format_stack()))
             return None
         if row and row[0] and row[3] == 1:
             cached_checksum, cached_size, cached_mtime, _ = row
