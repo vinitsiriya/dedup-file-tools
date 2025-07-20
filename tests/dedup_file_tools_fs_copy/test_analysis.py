@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from dedup_file_tools_fs_copy.phases.analysis import persist_file_metadata, scan_files_on_volume, analyze_volumes
+from dedup_file_tools_fs_copy.phases.analysis import persist_file_metadata, scan_file_on_directory, analyze_directories
 from dedup_file_tools_commons.utils.uidpath import UidPathUtil
 
 def setup_test_db(tmp_path, table):
@@ -37,13 +37,13 @@ def test_persist_file_metadata_insert_and_update(tmp_path):
         row = conn.execute(f"SELECT size, last_modified FROM {table} WHERE uid=? AND relative_path=?", ('testuid', 'file1.txt')).fetchone()
         assert row == (456, 2222)
 
-def test_scan_files_on_volume(tmp_path):
+def test_scan_file_on_directory(tmp_path):
     uid_path = UidPathUtil()
     d = tmp_path / "scanme"
     d.mkdir()
     (d / "a.txt").write_text("a")
     (d / "b.txt").write_text("b")
-    files = list(scan_files_on_volume(str(d), uid_path))
+    files = list(scan_file_on_directory(str(d), uid_path))
     rels = {f['relative_path'] for f in files}
     # Compare basenames to expected filenames
     assert {os.path.basename(r) for r in rels} == {"a.txt", "b.txt"}
@@ -53,14 +53,14 @@ def test_scan_files_on_volume(tmp_path):
         assert f['size'] > 0
         assert isinstance(f['last_modified'], int)
 
-def test_analyze_volumes(tmp_path):
+def test_analyze_directories(tmp_path):
     table = "test_files"
     db_path = setup_test_db(tmp_path, table)
     d = tmp_path / "analyzeme"
     d.mkdir()
     (d / "x.txt").write_text("x")
     (d / "y.txt").write_text("y")
-    analyze_volumes(db_path, [str(d)], table)
+    analyze_directories(db_path, [str(d)], table)
     with sqlite3.connect(db_path) as conn:
         rows = list(conn.execute(f"SELECT relative_path FROM {table}"))
         rels = {r[0] for r in rows}

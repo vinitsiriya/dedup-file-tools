@@ -25,35 +25,46 @@ def summary_phase(db_path, job_dir):
     """
     Prints a summary of what has happened, where the logs are, and generates a CSV report of errors and not-done files.
     """
-    print("\n==== SUMMARY PHASE ====")
-    print(f"Job directory: {job_dir}")
+    import logging
+    logger = logging.getLogger()
+    logger.info("==== SUMMARY PHASE: START ====")
+    logger.info(f"Job directory: {job_dir}")
     log_path = os.path.join(job_dir, 'dedup_file_tools_fs_copy.log')
     if os.path.exists(log_path):
-        print(f"Log file: {log_path}")
+        logger.info(f"Log file: {log_path}")
     else:
-        print("Log file not found in job directory.")
-
-    conn = RobustSqliteConn(db_path).connect()
-    cur = conn.cursor()
-    # Collect files with errors or not done from copy_status table
-    cur.execute("""
-        SELECT s.uid, s.relative_path, cs.status as copy_status, cs.error_message
-        FROM source_files s
-        JOIN copy_status cs ON s.uid = cs.uid AND s.relative_path = cs.relative_path
-        WHERE cs.status != 'done'
-    """)
-    rows = cur.fetchall()
-    if not rows:
-        print("All files copied successfully. No errors or pending files.")
-    else:
-        print(f"{len(rows)} file(s) with errors or not done. See CSV report.")
-    # Write CSV
-    csv_path = os.path.join(job_dir, 'summary_report.csv')
-    with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['uid', 'relative_path', 'copy_status', 'error_message'])
-        for row in rows:
-            writer.writerow(row)
-    print(f"CSV report generated: {csv_path}")
-    conn.close()
-    print("=======================\n")
+        logger.warning("Log file not found in job directory.")
+    try:
+        logger.info("Opening database connection...")
+        conn = RobustSqliteConn(db_path).connect()
+        logger.info("Database connection opened.")
+        cur = conn.cursor()
+        logger.info("Querying for files with errors or not done...")
+        cur.execute("""
+            SELECT s.uid, s.relative_path, cs.status as copy_status, cs.error_message
+            FROM source_files s
+            JOIN copy_status cs ON s.uid = cs.uid AND s.relative_path = cs.relative_path
+            WHERE cs.status != 'done'
+        """)
+        rows = cur.fetchall()
+        logger.info(f"Query complete. {len(rows)} row(s) found.")
+        if not rows:
+            logger.info("All files copied successfully. No errors or pending files.")
+        else:
+            logger.warning(f"{len(rows)} file(s) with errors or not done. See CSV report.")
+        # Write CSV
+        csv_path = os.path.join(job_dir, 'summary_report.csv')
+        logger.info(f"Opening CSV file for writing: {csv_path}")
+        with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['uid', 'relative_path', 'copy_status', 'error_message'])
+            for row in rows:
+                writer.writerow(row)
+                logger.debug(f"Wrote row to CSV: {row}")
+        logger.info(f"CSV report generated: {csv_path} ({len(rows)} rows)")
+        logger.info("Closing database connection...")
+        conn.close()
+        logger.info("Database connection closed.")
+    except Exception as e:
+        logger.exception(f"Exception in summary_phase: {e}")
+    logger.info("==== SUMMARY PHASE: END ====")

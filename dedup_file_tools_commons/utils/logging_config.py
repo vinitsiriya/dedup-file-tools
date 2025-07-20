@@ -22,19 +22,27 @@ def setup_logging(job_dir=None, log_level=None):
         logs_dir = os.path.join(job_dir, 'logs')
         os.makedirs(logs_dir, exist_ok=True)
         timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        log_file = os.path.join(logs_dir, f'fs_copy_tool_{timestamp}.log')
+        log_file = os.path.join(logs_dir, f'dedup_file_tools_{timestamp}.log')
     else:
         log_file = 'changes/dedup_file_tools_fs_copy.log'
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(log_file, encoding='utf-8')
+    # Remove all handlers before adding new ones
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    class FlushFileHandler(logging.FileHandler):
+        def emit(self, record):
+            super().emit(record)
+            self.flush()
+    fh = FlushFileHandler(log_file, encoding='utf-8')
     fh.setLevel(file_numeric_level)
     fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
     import sys
     ch = logging.StreamHandler(sys.stdout)
     ch.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
     ch.setLevel(console_numeric_level)
-    logger.handlers = []
     logger.addHandler(fh)
     logger.addHandler(ch)
+    logger.info(f"Logging initialized. Log file: {log_file}")
+    logger.error("Test error log to verify logging setup.")

@@ -22,7 +22,7 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
     from concurrent.futures import ThreadPoolExecutor, as_completed
     uid_path = UidPathUtil()
     uid_path.update_mounts()  # Ensure mounts are up to date for test environments
-    logging.info("Starting shallow verification stage...")
+    logging.info("[AGENT][VERIFY] Starting shallow verification stage...")
     timestamp = int(time.time())
     from dedup_file_tools_fs_copy.main import get_checksum_db_path, connect_with_attached_checksum_db
     import os
@@ -45,7 +45,7 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
         files = cur.fetchall()
     if not files:
         print("[INFO] No files found in source_files with copy_status='done'. Nothing to verify.")
-        logging.warning("No files found in source_files with copy_status='done'. Nothing to verify.")
+        logging.warning("[AGENT][VERIFY] No files found in source_files with copy_status='done'. Nothing to verify.")
         return
 
     def verify_one(entry):
@@ -74,7 +74,7 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
         else:
             verify_status = 'missing'
             verify_error = 'File missing at destination'
-        logging.info(f"Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+        logging.info(f"[AGENT][VERIFY] Shallow verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
         return (uid, rel_path, exists, size_matched, last_modified_matched, expected_size, actual_size, expected_last_modified, actual_last_modified, verify_status, verify_error, timestamp)
 
     results = []
@@ -91,14 +91,14 @@ def shallow_verify_files(db_path, reverify=False, max_workers=8):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, results)
         conn.commit()
-    logging.info(f"Shallow verification complete: {len(files)} files processed.")
+    logging.info(f"[AGENT][VERIFY] Shallow verification complete: {len(files)} files processed.")
 
 def deep_verify_files(db_path, reverify=False, max_workers=8):
     """Deep verification: always perform all shallow checks, then compare checksums. Now multithreaded."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
     uid_path = UidPathUtil()
     uid_path.update_mounts()  # Ensure mounts are up to date for test environments
-    logging.info("Starting deep verification stage...")
+    logging.info("[AGENT][VERIFY] Starting deep verification stage...")
     timestamp = int(time.time())
     from dedup_file_tools_fs_copy.main import get_checksum_db_path, connect_with_attached_checksum_db
     import os
@@ -122,7 +122,7 @@ def deep_verify_files(db_path, reverify=False, max_workers=8):
         files = cur.fetchall()
     if not files:
         print("[INFO] No files found in source_files with copy_status='done'. Nothing to verify.")
-        logging.warning("No files found in source_files with copy_status='done'. Nothing to verify.")
+        logging.warning("[AGENT][VERIFY] No files found in source_files with copy_status='done'. Nothing to verify.")
         return
 
     def verify_one(entry):
@@ -177,7 +177,7 @@ def deep_verify_files(db_path, reverify=False, max_workers=8):
                 else:
                     verify_status = 'failed'
                     verify_error = 'Checksum mismatch'
-        logging.info(f"Deep verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
+        logging.info(f"[AGENT][VERIFY] Deep verify {rel_path}: {verify_status}{' - ' + verify_error if verify_error else ''}")
         return (uid, rel_path, checksum_matched, expected_checksum, src_checksum, dst_checksum, verify_status, verify_error, timestamp)
 
     results = []
@@ -194,4 +194,4 @@ def deep_verify_files(db_path, reverify=False, max_workers=8):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, results)
         conn.commit()
-    logging.info(f"Deep verification complete: {len(files)} files processed.")
+    logging.info(f"[AGENT][VERIFY] Deep verification complete: {len(files)} files processed.")

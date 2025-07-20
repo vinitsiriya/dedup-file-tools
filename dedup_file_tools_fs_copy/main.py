@@ -42,7 +42,7 @@ import sys
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from pathlib import Path
 from dedup_file_tools_fs_copy.db import init_db
-from dedup_file_tools_fs_copy.phases.analysis import analyze_volumes
+from dedup_file_tools_fs_copy.phases.analysis import analyze_directories
 from dedup_file_tools_fs_copy.phases.copy import copy_files
 from dedup_file_tools_fs_copy.phases.verify import shallow_verify_files, deep_verify_files
 from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
@@ -58,7 +58,7 @@ def init_job_dir(job_dir, job_name, checksum_db=None):
     init_db(db_path)
     if not os.path.exists(checksum_db_path):
         init_checksum_db(checksum_db_path)
-    logging.info(f"Initialized job directory at {job_dir} with database {db_path} and checksum DB {checksum_db_path}")
+    logging.info(f"[AGENT][MAIN] Initialized job directory at {job_dir} with database {db_path} and checksum DB {checksum_db_path}")
 
 
 # Path utilities from commons
@@ -75,13 +75,13 @@ def add_file_to_db(db_path, file_path):
     from dedup_file_tools_commons.utils.uidpath import UidPathUtil
     file = Path(file_path)
     if not file.is_file():
-        logging.error(f"Error: {file_path} is not a file.")
+        logging.error(f"[AGENT][MAIN] Error: {file_path} is not a file.")
         sys.exit(1)
     uid_path = UidPathUtil()
     uid_path_obj = uid_path.convert_path(str(file))
     uid, rel = uid_path_obj.uid, uid_path_obj.relative_path
     if uid is None:
-        logging.error(f"Error: Could not determine UID for {file_path}")
+        logging.error(f"[AGENT][MAIN] Error: Could not determine UID for {file_path}")
         sys.exit(1)
     try:
         stat = file.stat()
@@ -101,16 +101,16 @@ def add_file_to_db(db_path, file_path):
                     status='pending'
             """, (uid, rel))
             conn.commit()
-        logging.info(f"Added file: {file_path}")
+        logging.info(f"[AGENT][MAIN] Added file: {file_path}")
     except Exception as e:
-        logging.error(f"Error adding file: {file_path}\n{e}")
+        logging.error(f"[AGENT][MAIN] Error adding file: {file_path}\n{e}")
         sys.exit(1)
 
 def add_source_to_db(db_path, src_dir):
     uid_path = UidPathUtil()
     src = Path(src_dir)
     if not src.is_dir():
-        logging.error(f"Error: {src_dir} is not a directory.")
+        logging.error(f"[AGENT][MAIN] Error: {src_dir} is not a directory.")
         return
     from tqdm import tqdm
     from concurrent.futures import ThreadPoolExecutor
@@ -154,9 +154,9 @@ def add_source_to_db(db_path, src_dir):
             results = executor.map(process_batch, batches)
             for batch_count in results:
                 count += batch_count
-    logging.info(f"Added {count} files from directory: {src_dir}")
+    logging.info(f"[AGENT][MAIN] Added {count} files from directory: {src_dir}")
     if count > 0:
-        logging.info(f"Batch add complete: {count} files added from {src_dir}")
+        logging.info(f"[AGENT][MAIN] Batch add complete: {count} files added from {src_dir}")
 
 def list_files_in_db(db_path):
     with RobustSqliteConn(db_path).connect() as conn:
@@ -164,8 +164,8 @@ def list_files_in_db(db_path):
         cur.execute("SELECT uid, relative_path, size, last_modified FROM source_files ORDER BY uid, relative_path")
         rows = cur.fetchall()
         for row in rows:
-            logging.info(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]}")
-    logging.info(f"Total files: {len(rows)}")
+            logging.info(f"[AGENT][MAIN] {row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]}")
+    logging.info(f"[AGENT][MAIN] Total files: {len(rows)}")
 
 def remove_file_from_db(db_path, file_path):
     file = Path(file_path)
@@ -175,7 +175,7 @@ def remove_file_from_db(db_path, file_path):
         cur = conn.cursor()
         cur.execute("DELETE FROM source_files WHERE uid=? AND relative_path=?", (mount_id, rel))
         conn.commit()
-    logging.info(f"Removed file: {file_path}")
+    logging.info(f"[AGENT][MAIN] Removed file: {file_path}")
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Non-Redundant Media File Copy Tool")
@@ -347,11 +347,17 @@ def main(args=None):
     job_dir = getattr(parsed_args, 'job_dir', None)
     from dedup_file_tools_commons.utils.logging_config import setup_logging
     setup_logging(job_dir)
+    logging.info(f"[AGENT][MAIN] main() called with args: {args}")
     if getattr(parsed_args, 'command', None) == 'generate-config':
+        logging.info("[AGENT][MAIN] Entering interactive config generator phase.")
         from dedup_file_tools_fs_copy.utils.interactive_config import interactive_config_generator
         interactive_config_generator()
+        logging.info("[AGENT][MAIN] Interactive config generator phase complete.")
         return 0
-    return run_main_command(parsed_args)
+    logging.info(f"[AGENT][MAIN] Entering main command phase: {getattr(parsed_args, 'command', None)}")
+    result = run_main_command(parsed_args)
+    logging.info(f"[AGENT][MAIN] Main command phase complete with result: {result}")
+    return result
 
 
 def handle_summary(args):
@@ -368,9 +374,9 @@ def handle_analyze(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     init_db(db_path)
     if args.src:
-        analyze_volumes(db_path, args.src, 'source_files')
+        analyze_directories(db_path, args.src, 'source_files')
     if args.dst:
-        analyze_volumes(db_path, args.dst, 'destination_files')
+        analyze_directories(db_path, args.dst, 'destination_files')
     return 0
 
 def handle_copy(args):
@@ -486,7 +492,7 @@ def handle_log(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
-        logging.info('Copied files (destination_files):')
+        logging.info('[AGENT][MAIN] Copied files (destination_files):')
         cur.execute("""
             SELECT d.uid, d.relative_path, d.size, d.last_modified, s.status
             FROM destination_files d
@@ -494,16 +500,16 @@ def handle_log(args):
             WHERE s.status='done'
         """)
         for row in cur.fetchall():
-            logging.info(f"{row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]} | status: {row[4]}")
-        logging.info('---')
-        logging.info('Errors (source_files):')
+            logging.info(f"[AGENT][MAIN] {row[0]} | {row[1]} | size: {row[2]} | mtime: {row[3]} | status: {row[4]}")
+        logging.info('[AGENT][MAIN] ---')
+        logging.info('[AGENT][MAIN] Errors (source_files):')
         cur.execute("""
             SELECT s.uid, s.relative_path, s.status, s.error_message
             FROM copy_status s
             WHERE s.status='error'
         """)
         for row in cur.fetchall():
-            logging.warning(f"{row[0]} | {row[1]} | status: {row[2]} | error: {row[3]}")
+            logging.warning(f"[AGENT][MAIN] {row[0]} | {row[1]} | status: {row[2]} | error: {row[3]}")
     return 0
 
 def handle_deep_verify(args):
@@ -515,7 +521,7 @@ def handle_verify_status(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
-        logging.info('Shallow Verification Results:')
+        logging.info('[AGENT][MAIN] Shallow Verification Results:')
         cur.execute('''
             SELECT relative_path, verify_status, verify_error, expected_size, actual_size, expected_last_modified, actual_last_modified
             FROM verification_shallow_results
@@ -523,14 +529,14 @@ def handle_verify_status(args):
             ORDER BY relative_path
         ''')
         for row in cur.fetchall():
-            logging.info(f"{row[0]} | status: {row[1]} | error: {row[2]} | size: {row[4]}/{row[3]} | mtime: {row[6]}/{row[5]}")
+            logging.info(f"[AGENT][MAIN] {row[0]} | status: {row[1]} | error: {row[2]} | size: {row[4]}/{row[3]} | mtime: {row[6]}/{row[5]}")
     return 0
 
 def handle_deep_verify_status(args):
     db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)
     with RobustSqliteConn(db_path).connect() as conn:
         cur = conn.cursor()
-        logging.info('Deep Verification Results:')
+        logging.info('[AGENT][MAIN] Deep Verification Results:')
         cur.execute('''
             SELECT relative_path, verify_status, verify_error, expected_checksum, src_checksum, dst_checksum, timestamp
             FROM verification_deep_results
@@ -538,7 +544,7 @@ def handle_deep_verify_status(args):
             ORDER BY relative_path
         ''')
         for row in cur.fetchall():
-            logging.info(f"{row[0]} | status: {row[1]} | error: {row[2]} | expected: {row[3]} | src: {row[4]} | dst: {row[5]} | ts: {row[6]}")
+            logging.info(f"[AGENT][MAIN] {row[0]} | status: {row[1]} | error: {row[2]} | expected: {row[3]} | src: {row[4]} | dst: {row[5]} | ts: {row[6]}")
     return 0
 
 def handle_add_file(args):
@@ -611,7 +617,7 @@ def handle_import_checksums(args):
         cur.execute("SELECT uid, relative_path, size, last_modified, checksum, imported_at, last_validated, is_valid FROM checksum_cache")
         rows = cur.fetchall()
     # Insert into attached checksum DB
-    logging.info(f"Rows to import from other DB: {len(rows)} rows")
+    logging.info(f"[AGENT][MAIN] Rows to import from other DB: {len(rows)} rows")
     from tqdm import tqdm
     conn = connect_with_attached_checksum_db(db_path, checksum_db_path)
     try:
@@ -627,10 +633,10 @@ def handle_import_checksums(args):
         # Log all rows in checksum_cache after import
         cur.execute("SELECT COUNT(*) FROM checksumdb.checksum_cache")
         count = cur.fetchone()[0]
-        logging.info(f"All rows in main job's checksum_cache after import: {count} rows")
+        logging.info(f"[AGENT][MAIN] All rows in main job's checksum_cache after import: {count} rows")
     finally:
         conn.close()
-    logging.info(f"Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
+    logging.info(f"[AGENT][MAIN] Imported {len(rows)} checksums from {other_db_path} into checksum_cache.")
     return 0
 
 def run_main_command(args):
@@ -788,9 +794,15 @@ def run_main_command(args):
     elif args.command == 'summary':
         return handle_summary(args)
 
-    logging.error("No command specified or unknown command.")
+    logging.error("[AGENT][MAIN] No command specified or unknown command.")
     return 1
 
 if __name__ == "__main__":
     setup_logging()
-    main()
+    logging.info("[AGENT][MAIN] Program started.")
+    try:
+        main()
+        logging.info("[AGENT][MAIN] Program finished successfully.")
+    except Exception as e:
+        logging.exception(f"[AGENT][MAIN] Unhandled exception: {e}")
+        raise
