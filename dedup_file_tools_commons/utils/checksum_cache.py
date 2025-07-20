@@ -77,15 +77,12 @@ class ChecksumCache:
 
     def get_or_compute_with_invalidation(self, path: str) -> Optional[str]:
         import logging
-        logging.info(f"[ChecksumCache] get_or_compute_with_invalidation called for {path}")
         uid_path_obj = self.uid_path.convert_path(path)
         uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
         if not uid:
-            logging.info(f"[ChecksumCache] No UID for path: {path}")
             return None
         file_path = Path(path)
         if not file_path.exists():
-            logging.info(f"[ChecksumCache] File does not exist: {file_path}")
             return None
         stat = file_path.stat()
         try:
@@ -96,7 +93,6 @@ class ChecksumCache:
                     (uid, str(rel_path))
                 )
                 row = cur.fetchone()
-            logging.info(f"[ChecksumCache] Cache query result for {file_path}: {row}")
         except Exception as e:
             import traceback
             logging.error(f"[ChecksumCache] Exception during cache query for {file_path}: {e}")
@@ -108,8 +104,8 @@ class ChecksumCache:
         if row and row[0] and row[3] == 1:
             cached_checksum, cached_size, cached_mtime, _ = row
             if cached_size == stat.st_size and cached_mtime == int(stat.st_mtime):
-                logging.info(f"[ChecksumCache] Cache hit for {file_path}: {cached_checksum}")
                 return cached_checksum
+        # Only log when cache miss or invalid
         logging.info(f"[ChecksumCache] No valid cache, computing checksum for {file_path}")
         checksum = compute_sha256(file_path)
         logging.info(f"[ChecksumCache] Computed checksum for {file_path}: {checksum}")
@@ -207,10 +203,9 @@ class ChecksumCache:
         uid_path_obj = self.uid_path.convert_path(path)
         uid, rel_path = uid_path_obj.uid, uid_path_obj.relative_path
         if not uid:
-            logging.info(f"[ChecksumCache] Skipping insert: No UID for path {path}")
             return
         now = int(time.time())
-        logging.info(f"[ChecksumCache] Inserting checksum: uid={uid}, rel_path={rel_path}, size={size}, mtime={last_modified}, checksum={checksum}")
+        # No log on positive insert
         with self.conn_factory() as conn:
             cur = conn.cursor()
             cur.execute(
