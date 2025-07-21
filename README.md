@@ -162,7 +162,7 @@ See the [User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md
 
 1. **Install (Recommended):**
    ```
-   pipx install dedup-file-tools==0.1.0
+   pipx install dedup-file-tools
    ```
    Or, to always get the latest version:
    ```
