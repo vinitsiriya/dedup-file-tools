@@ -1,8 +1,9 @@
 
 
+
 # 🚀 dedup-file-tools: The Ultimate Toolkit for Safe, Fast, and Auditable File Management
 
-**Two powerful CLI tools, one mission: never lose a file, never copy a duplicate, and always know what happened.**
+**Three powerful CLI tools, one mission: never lose a file, never copy a duplicate, always know what happened, and now—never miss a difference!**
 
 ---
 
@@ -12,12 +13,16 @@
 
 - **dedup-file-move-dupes**: Hunts down duplicate files in any folder or storage pool and safely moves all detected duplicates to a special `.dupes` directory. It’s the easiest way to clean up your drives and reclaim space—exciting, right?
 
-Both tools are designed for safety, auditability, and total peace of mind!
+- **dedup-file-compare**: The newest member of the family! Instantly compare two directories (or backup pools) by checksum, size, or modification time. Find missing, extra, or changed files with blazing speed and total auditability. Perfect for backup verification, migration audits, and peace of mind!
+
+All tools are designed for safety, auditability, and total peace of mind!
+
 
 
 ## Why dedup-file-tools?
 
 - **No more accidental duplicates:** Move or copy files between drives, folders, or backup pools with confidence—deduplication is automatic.
+- **Never miss a difference:** Instantly spot missing, extra, or changed files between any two locations. Verify backups, audit migrations, and sleep easy!
 - **Resumable & robust:** Interrupt a job? No problem. All state is tracked in a job database. Resume anytime, anywhere.
 - **Audit everything:** Every action, every file, every error—fully logged and queryable.
 - **Cross-platform:** Works on Windows, Linux, and with both fixed and removable drives.
@@ -27,7 +32,44 @@ Both tools are designed for safety, auditability, and total peace of mind!
 ---
 
 
-## Two Tools, Two Workflows — Pick Your Power!
+
+## Three Tools, Three Workflows — Pick Your Power!
+
+---
+
+### 🆚 dedup-file-compare: The "Spot Every Difference" Workflow
+
+Want to know exactly what changed, what’s missing, or what’s extra between two folders, drives, or backup pools? This is your digital X-ray!
+
+#### Step-by-Step Tutorial
+
+1. **Initialize your compare job:**
+   ```
+   dedup-file-compare init --job-dir ./comparejob --job-name comparejob
+   ```
+2. **Add your left and right directories:**
+   ```
+   dedup-file-compare add-to-left --job-dir ./comparejob --job-name comparejob --dir ./left
+   dedup-file-compare add-to-right --job-dir ./comparejob --job-name comparejob --dir ./right
+   ```
+3. **Find missing, extra, or changed files:**
+   ```
+   dedup-file-compare find-missing-files --job-dir ./comparejob --job-name comparejob
+   ```
+4. **Show results, audit, and export:**
+   ```
+   dedup-file-compare show-result --job-dir ./comparejob --job-name comparejob --summary
+   dedup-file-compare show-result --job-dir ./comparejob --job-name comparejob --output results.csv
+   ```
+
+**Want it all in one go?**
+Just run:
+```
+dedup-file-compare one-shot --job-dir ./comparejob --job-name comparejob --left ./left --right ./right
+```
+And... Voila! Instantly see every difference, missing file, or change—fully auditable and exportable.
+
+See the [User Guide](docs/dedup_file_tools_compare/developer_reference/user_prepective/README.md) for advanced workflows and YAML config power.
 
 ---
 
@@ -110,6 +152,7 @@ See the [User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md
 
 ---
 
+
 ## Quick Start (Unified)
 
 1. **Install (Recommended):**
@@ -129,16 +172,20 @@ See the [User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md
    dedup-file-copy-fs generate-config
    # or
    dedup-file-move-dupes --config config.yaml
+   # or
+   dedup-file-compare --config config.yaml
    ```
 3. **Run a one-shot workflow:**
    ```
    dedup-file-move-dupes one-shot --job-dir ./myjob --job-name myjob --lookup-pool ./data --dupes-folder ./dupes
    dedup-file-copy-fs one-shot --job-dir ./copyjob --job-name copyjob --src ./source --dst ./dest
+   dedup-file-compare one-shot --job-dir ./comparejob --job-name comparejob --left ./left --right ./right
    ```
 4. **Check logs, verify, and audit:**
    ```
    dedup-file-move-dupes summary --job-dir ./myjob --job-name myjob
    dedup-file-copy-fs verify --job-dir ./copyjob --job-name copyjob --stage deep
+   dedup-file-compare show-result --job-dir ./comparejob --job-name comparejob --summary
    ```
 
 ---
@@ -153,20 +200,25 @@ See [UidPath documentation](docs/dedup_file_tools_commons/uidpath.md) for detail
 
 ---
 
+
 ## Want More?
 
 - **Full CLI docs:**
+  - [dedup_file_tools_compare CLI Reference](docs/dedup_file_tools_compare/developer_reference/user_prepective/cli.md)
   - [dedup_file_tools_dupes_move CLI Reference](docs/dedup_file_tools_dupes_move/developer_reference/cli.md)
   - [dedup_file_tools_fs_copy CLI Reference](docs/dedup_file_tools_fs_copy/developer_reference/cli.md)
 - **User guides & tutorials:**
+  - [dedup_file_tools_compare User Guide](docs/dedup_file_tools_compare/developer_reference/user_prepective/README.md)
   - [dedup_file_tools_dupes_move User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md)
   - [Generic Tutorial: Move Duplicates (dedup-file-move-dupes)](docs/dedup_file_tools_dupes_move/user_prespective/generic_dupes_move_tutorial.md)
   - [dedup_file_tools_fs_copy User Guide](docs/dedup_file_tools_fs_copy/user_prepective/readme.md)
   - [Generic Tutorial: Copy Without Duplicates (dedup-file-copy-fs)](docs/dedup_file_tools_fs_copy/user_prepective/generic_copy_tutorial.md)
 - **Agent/AI integration:**
+  - [External AI Tool Integration (dedup-file-compare)](docs/dedup_file_tools_compare/standalone/external_ai_tool_doc.md)
   - [External AI Tool Integration (dedup-file-copy-fs)](docs/dedup_file_tools_fs_copy/standalone/external_ai_tool_doc.md)
   - [External AI Tool Integration (dedup-file-move-dupes)](docs/dedup_file_tools_dupes_move/standalone/external_ai_tool_doc.md)
 - **Requirements & design:**
+  - [Requirements & Design (dedup-file-compare)](docs/dedup_file_tools_compare/developer_reference/requirements/requirements.md)
   - [Requirements & Design (dedup-file-copy-fs)](docs/dedup_file_tools_fs_copy/developer_reference/requirements/requirements.md)
   - [Requirements & Design (dedup-file-move-dupes)](docs/dedup_file_tools_dupes_move/developer_reference/requirements/requirements.md)
 

@@ -4,6 +4,57 @@ from typing import Optional
 import time
 
 class ChecksumCache2:
+    def exists_at_pool(self, conn, table: str, checksum: str) -> bool:
+        """
+        Generic version of exists_at_destination_pool: checks if any file in the given pool table has the given checksum (using checksumdb.checksum_cache).
+        """
+        import logging
+        cur = conn.cursor()
+        query = f'''
+            SELECT pf.uid, pf.relative_path, pf.size, pf.last_modified, cc.is_valid
+            FROM {table} AS pf
+            JOIN checksumdb.checksum_cache AS cc
+              ON pf.uid = cc.uid AND pf.relative_path = cc.relative_path
+            WHERE cc.checksum = ? AND cc.is_valid = 1
+            LIMIT 1
+        '''
+        cur.execute(query, (checksum,))
+        row = cur.fetchone()
+        if not row:
+            logging.info(f"[ChecksumCache2] No {table} entry for checksum {checksum}")
+            return False
+        uid, rel_path, cached_size, cached_mtime, is_valid = row
+        from dedup_file_tools_commons.utils.uidpath import UidPath
+        uid_path_obj = self.uid_path(uid, rel_path) if callable(self.uid_path) else UidPath(uid, rel_path)
+        file_path = self.uid_path.reconstruct_path(uid_path_obj) if hasattr(self.uid_path, 'reconstruct_path') else None
+        from pathlib import Path
+        if not file_path or not Path(file_path).exists():
+            logging.warning(f"[ChecksumCache2] {table} file missing: uid={uid}, rel_path={rel_path}, path={file_path}")
+            cur.execute(
+                "UPDATE checksumdb.checksum_cache SET is_valid=0 WHERE uid=? AND relative_path=?",
+                (uid, rel_path)
+            )
+            conn.commit()
+            return False
+        stat = Path(file_path).stat()
+        if stat.st_size != cached_size:
+            logging.warning(f"[ChecksumCache2] {table} file size mismatch: {file_path} (disk={stat.st_size}, cache={cached_size})")
+            cur.execute(
+                "UPDATE checksumdb.checksum_cache SET is_valid=0 WHERE uid=? AND relative_path=?",
+                (uid, rel_path)
+            )
+            conn.commit()
+            return False
+        if int(stat.st_mtime) != cached_mtime:
+            logging.warning(f"[ChecksumCache2] {table} file mtime mismatch: {file_path} (disk={int(stat.st_mtime)}, cache={cached_mtime})")
+            cur.execute(
+                "UPDATE checksumdb.checksum_cache SET is_valid=0 WHERE uid=? AND relative_path=?",
+                (uid, rel_path)
+            )
+            conn.commit()
+            return False
+        logging.info(f"[ChecksumCache2] {table} file valid: {file_path}")
+        return True
     """
     Variant of ChecksumCache that takes a live DB connection object for all operations.
     This avoids opening/closing a connection for each query, and is suitable for batch operations.
