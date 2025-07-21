@@ -1,0 +1,109 @@
+
+
+"""
+File: dedup_file_tools_fs_copy/phases/copy.py
+Phase: Copy
+
+Purpose:
+    Orchestrates the copying of files from source to destination directories, ensuring deduplication, resumability, and robust error handling. Tracks copy status in the database, uses checksums to avoid redundant copies, and supports multi-threaded execution for performance.
+
+Key Features:
+    - Resets status for files missing from destination but marked as done
+    - Identifies pending or failed copy tasks from the database
+    - Performs deduplicated, resumable file copy operations with checksum verification
+    - Updates copy status and destination file records in the database
+    - Supports multi-threaded copying with progress reporting
+
+Design Goals:
+    - Deduplication, resumability, auditability, and robust error handling
+    - Efficient, thread-safe database access and progress feedback
+"""
+
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.fileops import copy_file
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
+import threading
+import logging
+
+
+
+def reset_status_for_missing_files(db_path, dst_roots):
+    """
+    For any file marked as done but missing from all destination roots, reset its status to 'pending'.
+
+    Args:
+        db_path (str): Path to the job database.
+        dst_roots (list[str]): List of destination root directories.
+
+    Implementation:
+        - Scans the database for files marked as 'done'.
+        - Checks if the file exists in any of the destination roots.
+        - If missing, updates the status in the database to 'pending' for retry.
+        - Uses ThreadPoolExecutor for parallel checks and tqdm for progress feedback.
+        - Updates are performed sequentially to avoid DB locking.
+    """
+    pass
+
+
+
+def get_pending_copies(db_path):
+    """
+    Returns a list of files that are pending, in error, or in progress for copying.
+
+    Args:
+        db_path (str): Path to the job database.
+
+    Returns:
+        list[tuple]: List of (uid, relative_path, size, last_modified) for files to be copied.
+
+    Implementation:
+        - Queries the database for files whose copy status is NULL, 'pending', 'error', or 'in_progress'.
+        - Returns a list of tuples for further processing by the copy phase.
+    """
+    pass
+
+
+
+def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
+    """
+    Updates the copy status for a file in the database.
+
+    Args:
+        db_path (str): Path to the job database.
+        uid (str): Unique file identifier.
+        rel_path (str): Relative file path.
+        status (str): New status ('pending', 'done', 'error', etc.).
+        error_message (str, optional): Error message if status is 'error'.
+
+    Implementation:
+        - Inserts or updates the copy_status table for the given file (uid, rel_path).
+        - Records the new status, timestamp, and any error message.
+        - Ensures resumability and accurate tracking of copy progress and errors.
+    """
+    pass
+
+
+
+def copy_files(db_path, src_roots, dst_roots, threads=4):
+    """
+    Orchestrates the multi-threaded copying of files from source to destination, with deduplication and status tracking.
+
+    Args:
+        db_path (str): Path to the job database.
+        src_roots (list[str]): List of source root directories.
+        dst_roots (list[str]): List of destination root directories.
+        threads (int): Number of worker threads to use.
+
+    Implementation:
+        - Resets status for missing files before starting.
+        - Loads pending copy tasks from the database.
+        - For each file:
+            - Checks if the file is already present at the destination (by checksum and path).
+            - If not, copies the file, verifies checksum, and updates the database.
+            - Handles errors and updates status accordingly.
+        - Uses ThreadPoolExecutor for parallelism and tqdm for progress reporting.
+        - Ensures robust, resumable, and deduplicated copy operations.
+        - All operations are logged and errors are handled per file.
+    """
+    pass

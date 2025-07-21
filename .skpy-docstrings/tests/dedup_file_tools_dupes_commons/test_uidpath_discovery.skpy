@@ -1,0 +1,34 @@
+import os
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+
+
+def test_pytest_discovery():
+    pass
+
+
+def test_convert_and_reconstruct(tmp_path):
+    pass
+
+
+def test_is_conversion_reversible(tmp_path):
+    pass
+
+
+def test_get_mounts_and_uids():
+    pass
+
+
+def test_nested_directory_conversion(tmp_path):
+    pass
+
+
+def test_get_mount_point_and_label():
+    pass
+
+
+def test_invalid_path_conversion():
+    pass
+
+
+def test_is_volume_available():
+    pass

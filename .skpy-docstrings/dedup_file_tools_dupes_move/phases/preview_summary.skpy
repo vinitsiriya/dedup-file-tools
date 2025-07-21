@@ -1,0 +1,7 @@
+import logging
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def preview_summary(db_path):
+    """Print a summary of planned duplicate moves and groups before any file operations."""
+    pass

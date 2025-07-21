@@ -1,0 +1,133 @@
+import platform
+import logging
+from pathlib import Path
+import subprocess
+from dataclasses import dataclass
+from typing import Any
+
+
+class UidPath:
+    """UidPath: System-independent file reference.
+
+    Represents a file location as a (uid, relative_path) pair:
+    - uid: Unique identifier for the volume (serial number, UUID, or test path).
+    - relative_path: Path relative to the mount point or root.
+
+    Use this struct to pass file references around, instead of raw tuples."""
+
+    uid: Any
+    relative_path: str
+
+
+class UidPathUtil:
+    """UidPath provides methods to convert file paths to a (UID, relative_path) tuple and reconstruct
+    absolute paths from these tuples. This abstraction allows for system-independent file referencing.
+
+    UID:
+        - On Windows: The volume serial number (replacement for drive letter, e.g., 'C:').
+        - On Linux: The filesystem UUID.
+    Relative Path:
+        - The path of the file relative to the mount point (drive root or mount directory).
+        - NOTE: The format of relative_path is only guaranteed to be relative to the detected mount point.
+          It may be a long path segment or appear absolute in some environments (e.g., tests/temp dirs).
+        - Only UidPath should interpret or manipulate rel_path; all other code should treat it as opaque.
+    """
+
+    def __init__(self):
+        """Initialize UidPath, detecting the operating system and available mount points."""
+        pass
+
+    def get_mounts(self):
+        """Detect all available mount points and their UIDs for the current system.
+        Returns:
+            dict: Mapping of mount point (str) to UID (str or int)."""
+        pass
+
+    def get_mounts_linux(self):
+        """Get Linux mount points and their UUIDs using lsblk.
+        Returns:
+            dict: Mapping of mount point to UUID."""
+        pass
+
+    def get_mounts_windows(self):
+        """Get Windows drive letters and their volume serial numbers using WMI.
+        Returns:
+            dict: Mapping of drive letter (e.g., 'C:') to serial number (int or str)."""
+        pass
+
+    def update_mounts(self):
+        """Refresh the mount point to UID mapping."""
+        pass
+
+    def get_available_volumes(self):
+        """Return the current mapping of mount points to UIDs.
+        Returns:
+            dict: Mapping of mount point to UID."""
+        pass
+
+    def is_volume_available(self, uid):
+        """Check if a volume with the given UID is available.
+        Args:
+            uid (str or int): UID to check.
+        Returns:
+            bool: True if available, False otherwise."""
+        pass
+
+    def get_volume_id_from_path(self, path):
+        """Get the UID for the given path.
+        Args:
+            path (str): Absolute file path.
+        Returns:
+            str or int: UID for the volume containing the path."""
+        pass
+
+    def get_mount_point_from_volume_id(self, volume_id):
+        """Given a UID, return the corresponding mount point (drive root or mount directory).
+        Args:
+            volume_id (str or int): UID of the volume.
+        Returns:
+            str: Mount point path, or None if not found."""
+        pass
+
+    def get_available_uids(self):
+        """Return a set of all available UIDs.
+        Returns:
+            set: Set of UIDs."""
+        pass
+
+    def convert_path(self, path):
+        """Convert an absolute file path to a UidPath (uid, relative_path) struct.
+        Args:
+            path (str): Absolute file path.
+        Returns:
+            UidPath: (uid, relative_path) where relative_path is relative to the mount point.
+        Notes:
+            - The format of relative_path is only guaranteed to be relative to the detected mount point.
+            - It may be a long path segment or appear absolute in some environments (e.g., tests/temp dirs).
+            - Only UidPath should interpret or manipulate rel_path; all other code should treat it as opaque.
+        """
+        pass
+
+    def reconstruct_path(self, uid_path_obj):
+        """Reconstruct an absolute path from a UidPath (uid, relative_path) struct.
+        Args:
+            uid_path_obj (UidPath): UidPath dataclass with uid and relative_path.
+        Returns:
+            Path or None: Absolute path if the volume is available, else None."""
+        pass
+
+    def is_conversion_reversible(self, path):
+        """Check if converting and reconstructing a path yields the original absolute path.
+        Args:
+            path (str): Absolute file path.
+        Returns:
+            bool: True if reversible, False otherwise."""
+        pass
+
+    def get_volume_label_from_drive_letter(self, drive_letter):
+        """Get the volume label for a given drive letter (Windows only).
+        Args:
+            drive_letter (str): Drive letter (e.g., 'C:').
+        Returns:
+            str: Volume label, or 'Unknown' if not found."""
+        pass

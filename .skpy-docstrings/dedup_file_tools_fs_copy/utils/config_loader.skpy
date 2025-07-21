@@ -1,0 +1,14 @@
+import yaml
+import argparse
+import os
+
+
+def load_yaml_config(config_path):
+    pass
+
+
+def merge_config_with_args(args, config_dict, parser):
+    """Update the argparse.Namespace `args` with values from config_dict,
+    but only for arguments that are still set to their default values.
+    CLI args always take precedence."""
+    pass

@@ -1,0 +1,31 @@
+import sqlite3
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+
+
+def setup_test_db_with_pool(tmp_path):
+    pass
+
+
+def test_exists_at_destination_pool(tmp_path):
+    pass
+
+
+def setup_test_db(tmp_path):
+    pass
+
+
+def test_update_existing_entry(tmp_path):
+    pass
+
+
+def test_multiple_files_and_uids(tmp_path):
+    pass
+
+
+def test_invalid_entries_are_ignored(tmp_path):
+    pass
+
+
+def test_subdirectory_file(tmp_path):
+    pass

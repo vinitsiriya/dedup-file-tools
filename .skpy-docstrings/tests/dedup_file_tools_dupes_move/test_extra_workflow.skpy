@@ -1,0 +1,25 @@
+import os
+import shutil
+import tempfile
+import pytest
+from dedup_file_tools_dupes_move.main import main
+
+
+def test_analysis_detects_no_duplicates(tmp_path):
+    pass
+
+
+def test_move_handles_missing_file(tmp_path):
+    pass
+
+
+def test_verify_detects_checksum_mismatch(tmp_path):
+    pass
+
+
+def test_summary_csv_output(tmp_path):
+    pass
+
+
+def test_preview_summary_output(tmp_path, capsys):
+    pass

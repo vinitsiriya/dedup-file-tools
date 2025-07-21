@@ -1,0 +1,20 @@
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+import time
+
+
+class DestinationPoolIndex:
+    """Manages the destination pool index for global duplicate detection.
+    This does NOT store checksums, only tracks which files are in the pool (by uid and relative path).
+    Checksum management remains in checksum_cache.py."""
+
+    def __init__(self, uid_path):
+        pass
+
+    def add_or_update_file(self, conn, path, size, last_modified):
+        pass
+
+    def exists(self, conn, uid, rel_path):
+        pass
+
+    def all_files(self, conn):
+        pass

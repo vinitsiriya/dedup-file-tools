@@ -1,0 +1,22 @@
+import logging
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+from pathlib import Path
+import os
+from tqdm import tqdm
+
+
+def persist_file_metadata(db_path, table, file_info):
+    pass
+
+
+def scan_file_on_directory(directory_root, uid_path):
+    pass
+
+
+def _extract_file_info(file, uid_path):
+    pass
+
+
+def analyze_directories(db_path, directory_roots, table):
+    pass

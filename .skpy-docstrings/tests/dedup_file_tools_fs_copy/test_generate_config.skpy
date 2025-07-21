@@ -1,0 +1,10 @@
+import io
+import os
+import tempfile
+import builtins
+import pytest
+from dedup_file_tools_fs_copy.main import main
+
+
+def test_generate_config_interactive(monkeypatch):
+    pass

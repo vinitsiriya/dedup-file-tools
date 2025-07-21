@@ -1,0 +1,24 @@
+import os
+import sqlite3
+from dedup_file_tools_fs_copy.phases.analysis import (
+    persist_file_metadata,
+    scan_file_on_directory,
+    analyze_directories,
+)
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+
+
+def setup_test_db(tmp_path, table):
+    pass
+
+
+def test_persist_file_metadata_insert_and_update(tmp_path):
+    pass
+
+
+def test_scan_file_on_directory(tmp_path):
+    pass
+
+
+def test_analyze_directories(tmp_path):
+    pass

@@ -1,0 +1,13 @@
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+
+def test_partial_dst_prepop(tmp_path):
+    """E2E test: Partial destination prepopulation scenario.
+    - Source: fileA, fileB, fileC, fileD
+    - Destination prepopulated with fileA, fileC
+    - After copy: fileB, fileD should be copied; fileA, fileC should remain unchanged
+    - (Current tool copies to dst/<full_source_path>)"""
+    pass

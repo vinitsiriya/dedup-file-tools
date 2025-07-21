@@ -1,0 +1,18 @@
+import os
+import sqlite3
+import tempfile
+import shutil
+import pytest
+from dedup_file_tools_dupes_move.handlers import handle_import_checksums
+from dedup_file_tools_commons.utils.paths import (
+    get_db_path_from_job_dir,
+    get_checksum_db_path,
+)
+
+
+def create_test_db_with_checksums(db_path, checksums):
+    pass
+
+
+def test_handle_import_checksums(tmp_path):
+    pass

@@ -1,0 +1,12 @@
+import os
+from pathlib import Path
+import logging
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def find_and_queue_duplicates(db_path, src_root, threads):
+    """Scan src_root recursively, compute checksums, persist all file metadata to dedup_files_pool,
+    group by checksum, and queue all but one file per group in dedup_move_plan."""
+    pass

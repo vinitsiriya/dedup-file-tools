@@ -1,0 +1,7 @@
+import os
+import time
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def verify_moves(db_path, dst_root, threads):
+    pass

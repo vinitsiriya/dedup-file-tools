@@ -1,0 +1,29 @@
+
+"""
+Database helpers for dedup_file_tools_fs_copy.
+
+Purpose:
+    Provides initialization and schema management for the file copy job database. Ensures all required tables and indexes are present for tracking source files, destination files, and copy status.
+
+Design Goals:
+    - Robust, resumable, and auditable copy workflows
+    - Safe concurrent access using RobustSqliteConn
+    - Extensible schema for future features
+"""
+
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+def init_db(db_path):
+    """
+    Initialize the job database for the file copy workflow.
+
+    Args:
+        db_path (str): Path to the SQLite database file.
+
+    Implementation:
+        - Creates tables for source_files, destination_files, and copy_status if they do not exist.
+        - Sets up indexes for efficient lookup and status tracking.
+        - Uses RobustSqliteConn for safe concurrent access.
+        - Designed to be idempotent and safe to call multiple times.
+    """
+    pass

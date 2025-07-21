@@ -1,0 +1,11 @@
+import os
+
+
+def get_db_path_from_job_dir(job_dir, job_name):
+    """Return the path to the main job database given the job directory and job name."""
+    pass
+
+
+def get_checksum_db_path(job_dir, checksum_db):
+    """Return the path to the checksum database, using a custom path if provided."""
+    pass

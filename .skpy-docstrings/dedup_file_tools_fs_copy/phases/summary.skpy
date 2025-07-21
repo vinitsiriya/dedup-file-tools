@@ -1,0 +1,8 @@
+import os
+import csv
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def summary_phase(db_path, job_dir):
+    """Prints a summary of what has happened, where the logs are, and generates a CSV report of errors and not-done files."""
+    pass

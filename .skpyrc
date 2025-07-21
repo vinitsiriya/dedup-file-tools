@@ -1,0 +1,16 @@
+## Example .skpyrc YAML config for skeleton generator
+include_docstring: true
+preserve_existing_docstring: true
+include_instance_vars: false
+include_constructor: false
+# You can use a single glob as a string, or a list of globs:
+python_glob:
+  - '**/*.py'
+  - 'src/**/*.py'
+ignore_globs:
+  - 'build/**'
+out: .skpy-docstrings
+src: .
+docstring_merge_policy: preserve_skpy_docstring
+exclude_private: false
+exclude_private: false

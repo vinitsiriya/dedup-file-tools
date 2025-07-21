@@ -1,0 +1,23 @@
+import sqlite3
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+
+
+def setup_test_db(tmp_path):
+    pass
+
+
+def test_get_or_compute_with_invalidation_basic(tmp_path):
+    pass
+
+
+def test_get_or_compute_with_invalidation_file_changed(tmp_path):
+    pass
+
+
+def test_get_or_compute_with_invalidation_file_metadata_changed(tmp_path):
+    pass
+
+
+def test_get_or_compute_with_invalidation_missing_file(tmp_path):
+    pass

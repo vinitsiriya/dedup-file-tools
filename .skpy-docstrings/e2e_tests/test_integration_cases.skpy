@@ -1,0 +1,19 @@
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+
+def test_deduplication(tmp_path):
+    """E2E test: Deduplication scenario.
+    - Source and destination have identical files.
+    - After copy: no files should be copied/overwritten."""
+    pass
+
+
+def test_nested_directories(tmp_path):
+    """E2E test: Nested directories scenario.
+    - Source contains nested folders/files.
+    - All files and structure should be copied to destination (current tool copies to dst/<full_source_path>).
+    """
+    pass

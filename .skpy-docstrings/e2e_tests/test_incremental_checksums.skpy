@@ -1,0 +1,14 @@
+import os
+import shutil
+import subprocess
+import sqlite3
+from pathlib import Path
+
+
+def test_incremental_checksums(tmp_path):
+    """E2E: Handles cases where some checksums are already loaded.
+    - Step 1: Create src with fileA, fileB. Run checksum (fileA, fileB).
+    - Step 2: Add fileC, modify fileA, delete fileB. Run checksum again.
+    - Step 3: Only fileA (changed) and fileC (new) should be rechecksummed/copied.
+    - Step 4: fileB's checksum may remain in DB, but file should not be copied."""
+    pass

@@ -1,0 +1,13 @@
+from dedup_file_tools_commons.utils.paths import (
+    get_db_path_from_job_dir,
+    get_checksum_db_path,
+)
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
+from tqdm import tqdm
+import logging
+
+
+def ensure_destination_pool_checksums(job_dir, job_name, checksum_db):
+    pass
