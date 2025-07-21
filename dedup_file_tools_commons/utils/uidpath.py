@@ -211,8 +211,14 @@ class UidPathUtil:
             Path or None: Absolute path if the volume is available, else None.
         """
         for mountpoint, key in self.mounts.items():
-            if key == uid_path_obj.uid or key == int(uid_path_obj.uid):
-                return Path(mountpoint) / uid_path_obj.relative_path
+            try:
+                if key == uid_path_obj.uid:
+                    return Path(mountpoint) / uid_path_obj.relative_path
+                if uid_path_obj.uid is not None and str(uid_path_obj.uid).strip() != '':
+                    if key == int(uid_path_obj.uid):
+                        return Path(mountpoint) / uid_path_obj.relative_path
+            except (ValueError, TypeError):
+                continue
         return None
 
     def is_conversion_reversible(self, path):

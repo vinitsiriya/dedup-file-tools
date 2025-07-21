@@ -97,28 +97,27 @@ def find_missing_files(db_path, by='checksum', threads=4, no_progress=False, lef
         c.close()
 
     batch_size = 1000
-    # Missing from right
-    if right or both:
-        batches = [missing_from_right[i:i+batch_size] for i in range(0, len(missing_from_right), batch_size)]
-        with ThreadPoolExecutor(max_workers=threads) as executor:
-            futs = [executor.submit(insert_batch, 'compare_results_right_missing', batch, 'uid,relative_path,last_modified,size') for batch in batches]
-            if not no_progress:
-                for _ in tqdm(as_completed(futs), total=len(futs), desc="Missing from right", unit="batch"):
-                    pass
-            else:
-                for _ in as_completed(futs):
-                    pass
-    # Missing from left
-    if left or both:
-        batches = [missing_from_left[i:i+batch_size] for i in range(0, len(missing_from_left), batch_size)]
-        with ThreadPoolExecutor(max_workers=threads) as executor:
-            futs = [executor.submit(insert_batch, 'compare_results_left_missing', batch, 'uid,relative_path,last_modified,size') for batch in batches]
-            if not no_progress:
-                for _ in tqdm(as_completed(futs), total=len(futs), desc="Missing from left", unit="batch"):
-                    pass
-            else:
-                for _ in as_completed(futs):
-                    pass
+    # Always insert missing from right
+    batches = [missing_from_right[i:i+batch_size] for i in range(0, len(missing_from_right), batch_size)]
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        futs = [executor.submit(insert_batch, 'compare_results_right_missing', batch, 'uid,relative_path,last_modified,size') for batch in batches]
+        if not no_progress:
+            for _ in tqdm(as_completed(futs), total=len(futs), desc="Missing from right", unit="batch"):
+                pass
+        else:
+            for _ in as_completed(futs):
+                pass
+
+    # Always insert missing from left
+    batches = [missing_from_left[i:i+batch_size] for i in range(0, len(missing_from_left), batch_size)]
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        futs = [executor.submit(insert_batch, 'compare_results_left_missing', batch, 'uid,relative_path,last_modified,size') for batch in batches]
+        if not no_progress:
+            for _ in tqdm(as_completed(futs), total=len(futs), desc="Missing from left", unit="batch"):
+                pass
+        else:
+            for _ in as_completed(futs):
+                pass
     # Identical
     if both or (not left and not right):
         batches = [identical[i:i+batch_size] for i in range(0, len(identical), batch_size)]

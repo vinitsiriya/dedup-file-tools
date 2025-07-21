@@ -1,21 +1,3 @@
-import logging
-
-
-import os
-import sqlite3
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from tqdm import tqdm
-
-def _file_info(fpath, directory):
-    stat = fpath.stat()
-    if os.name == 'nt':
-        uid = fpath.drive.upper()
-    else:
-        uid = '/'  # TODO: use real mount point/uidpath abstraction
-    rel_path = str(fpath.relative_to(directory))
-    return (uid, rel_path, int(stat.st_mtime), stat.st_size)
-
 def _insert_batch(db_path, table, batch):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
@@ -25,6 +7,23 @@ def _insert_batch(db_path, table, batch):
     ''', batch)
     conn.commit()
     conn.close()
+
+import logging
+import os
+import sqlite3
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+
+_uid_util = UidPathUtil()
+
+def _file_info(fpath, directory):
+    stat = fpath.stat()
+    uidpath = _uid_util.convert_path(fpath)
+    uid = uidpath.uid
+    rel_path = uidpath.relative_path
+    return (uid, rel_path, int(stat.st_mtime), stat.st_size)
 
 def add_directory_to_pool(db_path, directory, table, threads=4, batch_size=1000, show_progress=True):
     logging.info(f"[COMPARE][POOL] Scanning directory {directory} for files to add to {table}")

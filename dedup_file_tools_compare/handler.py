@@ -37,7 +37,16 @@ def handle_show_result(args):
     setup_logging_for_job(args.job_dir)
     import logging
     logging.info(f"Showing result for job_dir={args.job_dir}, job_name={args.job_name}")
-    # If output is not specified, use default CSV path
-    output = args.output or get_csv_path(args.job_dir)
-    show_result(db_path, summary=args.summary, full_report=args.full_report, output=output, show=args.show)
-    logging.info(f"Results written to {output}")
+    import datetime
+    # If output is not specified, generate a timestamped CSV in <job-dir>/reports/
+    if hasattr(args, 'output') and args.output:
+        output = args.output
+    else:
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        reports_dir = os.path.join(args.job_dir, "reports")
+        os.makedirs(reports_dir, exist_ok=True)
+        output = os.path.join(reports_dir, f"comparison_report_{timestamp}.csv")
+    show_result(db_path, summary=args.summary, full_report=args.full_report, output=(None if args.summary else output), show=args.show, use_normal_paths=getattr(args, 'use_normal_paths', False))
+    if not args.summary:
+        print(f"\n[COMPARE][RESULTS] Results written to: {output}")
+        logging.info(f"Results written to {output}")

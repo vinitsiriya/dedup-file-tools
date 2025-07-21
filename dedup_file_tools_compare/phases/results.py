@@ -4,7 +4,7 @@ import csv
 import json
 import os
 
-def show_result(db_path, summary=False, full_report=False, output=None, show='all'):
+def show_result(db_path, summary=False, full_report=False, output=None, show='all', use_normal_paths=False):
     import logging
     logging.info(f"[COMPARE][RESULTS] Loading results from {db_path}")
     conn = sqlite3.connect(db_path)
@@ -33,19 +33,23 @@ def show_result(db_path, summary=False, full_report=False, output=None, show='al
         print(f"  Missing from left: {missing_left}")
         print(f"  Identical files: {identical_count}")
         print(f"  Differing files: {different_count}")
-        conn.close()
         logging.info(f"[COMPARE][RESULTS] Summary: missing_right={missing_right}, missing_left={missing_left}, identical={identical_count}, different={different_count}")
+        conn.close()
         return
 
     # Full report
     results = []
     if show in ('all', 'unique-left'):
         cur.execute('SELECT uid, relative_path, last_modified, size FROM compare_results_left_missing')
-        for row in cur.fetchall():
+        left_missing_rows = cur.fetchall()
+        print('DEBUG: compare_results_left_missing rows:', left_missing_rows)
+        for row in left_missing_rows:
             results.append({'category': 'missing_left', 'uid': row[0], 'relative_path': row[1], 'last_modified': row[2], 'size': row[3]})
     if show in ('all', 'unique-right'):
         cur.execute('SELECT uid, relative_path, last_modified, size FROM compare_results_right_missing')
-        for row in cur.fetchall():
+        right_missing_rows = cur.fetchall()
+        print('DEBUG: compare_results_right_missing rows:', right_missing_rows)
+        for row in right_missing_rows:
             results.append({'category': 'missing_right', 'uid': row[0], 'relative_path': row[1], 'last_modified': row[2], 'size': row[3]})
     if show in ('all', 'identical'):
         try:
@@ -61,6 +65,26 @@ def show_result(db_path, summary=False, full_report=False, output=None, show='al
                 results.append({'category': 'different', 'uid': row[0], 'relative_path': row[1], 'last_modified_left': row[2], 'size_left': row[3], 'last_modified_right': row[4], 'size_right': row[5], 'checksum_left': row[6], 'checksum_right': row[7]})
         except sqlite3.OperationalError:
             pass
+
+    # Ensure every row has uid and relative_path for portability
+    for r in results:
+        if 'uid' not in r:
+            r['uid'] = ''
+        if 'relative_path' not in r:
+            r['relative_path'] = ''
+
+    # If use_normal_paths, reconstruct absolute path and add as 'absolute_path' column
+    if use_normal_paths:
+        from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
+        uid_util = UidPathUtil()
+        for r in results:
+            try:
+                abs_path = None
+                if r['uid'] and r['relative_path']:
+                    abs_path = uid_util.reconstruct_path(UidPath(r['uid'], r['relative_path']))
+                r['absolute_path'] = str(abs_path) if abs_path else ''
+            except Exception as e:
+                r['absolute_path'] = ''
 
     if output:
         ext = os.path.splitext(output)[1].lower()

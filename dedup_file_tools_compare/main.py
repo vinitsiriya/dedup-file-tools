@@ -26,6 +26,7 @@ def parse_args(argv=None):
     p_oneshot.add_argument('--show', choices=['identical', 'different', 'unique-left', 'unique-right', 'all'], default='all')
     p_oneshot.add_argument('--summary', action='store_true', help='Show summary (default)')
     p_oneshot.add_argument('--full-report', action='store_true', help='Show full report')
+    p_oneshot.add_argument('--use-normal-paths', action='store_true', help='Output absolute paths in the report (adds absolute_path column)')
     # import-checksums
     p_import = subparsers.add_parser('import-checksums', help='Import checksums from the checksum_cache table of another compatible database')
     p_import.add_argument('--job-dir', required=True)
@@ -67,6 +68,7 @@ def parse_args(argv=None):
     p_show.add_argument('--full-report', action='store_true')
     p_show.add_argument('--output', type=str)
     p_show.add_argument('--show', choices=['identical', 'different', 'unique-left', 'unique-right', 'all'], default='all')
+    p_show.add_argument('--use-normal-paths', action='store_true', help='Output absolute paths in the report (adds absolute_path column)')
 
     return parser.parse_args(argv)
 
@@ -122,7 +124,6 @@ def run_main_command(args):
         handle_show_result(show_args)
         return 0
     elif args.command == 'import-checksums':
-        import os
         from dedup_file_tools_commons.utils.paths import get_db_path_from_job_dir, get_checksum_db_path
         from dedup_file_tools_compare.phases.import_checksum import run_import_checksums
         db_path = get_db_path_from_job_dir(args.job_dir, args.job_name)

@@ -57,16 +57,22 @@ $cmd = "$venvPython -m dedup_file_tools_compare.main find-missing-files --job-di
 Write-Host "`n>>> Running: $cmd"
 Invoke-Expression $cmd
 
-$cmd = "$venvPython -m dedup_file_tools_compare.main show-result --job-dir $job --job-name testjob --summary"
+
+# Show results and write to CSV (full report, not summary)
+$reportsDir = "$job/reports"
+if (-not (Test-Path $reportsDir)) { New-Item -ItemType Directory -Path $reportsDir | Out-Null }
+$cmd = "$venvPython -m dedup_file_tools_compare.main show-result --job-dir $job --job-name testjob"
 Write-Host "`n>>> Running: $cmd"
 Invoke-Expression $cmd
 
-# Show summary CSV if generated
-Write-Host "`n=== Compare Summary CSV ==="
-if (Test-Path "$job/compare_summary.csv") {
-    Get-Content "$job/compare_summary.csv"
+# Find the latest compare_summary_*.csv in reports dir
+$csvFiles = Get-ChildItem -Path $reportsDir -Filter 'comparison_report_*.csv' | Sort-Object LastWriteTime -Descending
+if ($csvFiles.Count -gt 0) {
+    $csvPath = $csvFiles[0].FullName
+    Write-Host "`n=== Compare Summary CSV ==="
+    Get-Content $csvPath
 } else {
-    Write-Host "Summary CSV not found: $job/compare_summary.csv"
+    Write-Host "No comparison_report_*.csv found in $reportsDir"
 }
 
 Write-Host "`nManual test completed. Check $job for database/logs/results."
