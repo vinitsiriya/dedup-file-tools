@@ -40,12 +40,24 @@ def test_show_result_csv(tmp_path):
     find_missing_files(str(db_path))
     csv_path = job_dir / "result.csv"
     show_result(str(db_path), summary=False, full_report=True, output=str(csv_path))
-    # Check CSV file exists and has expected content
-    assert csv_path.exists()
-    with open(csv_path, newline='') as f:
+    # Find the timestamped reports directory
+    reports_dirs = [d for d in job_dir.iterdir() if d.is_dir() and d.name.startswith('reports_')]
+    assert reports_dirs, "No reports directory found"
+    reports_dir = max(reports_dirs, key=lambda d: d.stat().st_mtime)  # most recent
+    left_csv = reports_dir / 'missing_left.csv'
+    right_csv = reports_dir / 'missing_right.csv'
+    assert left_csv.exists(), f"{left_csv} does not exist"
+    assert right_csv.exists(), f"{right_csv} does not exist"
+    # Check missing_left.csv
+    with open(left_csv, newline='') as f:
         reader = csv.DictReader(f)
-        rows = list(reader)
-        print('CSV rows:', rows)
-        assert any(row.get('category') == 'missing_right' for row in rows)
-        assert any(row.get('category') == 'missing_left' for row in rows)
+        left_rows = list(reader)
+        print('missing_left.csv rows:', left_rows)
+        assert any(row.get('category') == 'missing_left' for row in left_rows)
+    # Check missing_right.csv
+    with open(right_csv, newline='') as f:
+        reader = csv.DictReader(f)
+        right_rows = list(reader)
+        print('missing_right.csv rows:', right_rows)
+        assert any(row.get('category') == 'missing_right' for row in right_rows)
     print('show_result CSV output test passed.')

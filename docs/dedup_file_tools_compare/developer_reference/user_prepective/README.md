@@ -1,7 +1,7 @@
-# User Perspective: Directory Compare Tool (dedup_file_tools_compare)
+# User Perspective: Directory Compare Tool (dedup-file-compare)
 
 ## Overview
-The `dedup_file_tools_compare` module provides a robust, scriptable command-line tool to compare two directories by checksum. It is designed for users who need to verify, audit, or synchronize large file sets, such as backups or data migrations.
+The `dedup-file-compare` tool provides a robust, scriptable command-line interface to compare two directories by checksum. It is designed for users who need to verify, audit, or synchronize large file sets, such as backups or data migrations.
 
 ## Key Features
 - Compare two directories by file checksum (default), size, or modification time
@@ -41,6 +41,7 @@ The `dedup_file_tools_compare` module provides a robust, scriptable command-line
 - Console summary: quick overview of identical, different, unique files
 - Full report: detailed per-file comparison
 - CSV/JSON: for further analysis or scripting
+- When using `--output` for CSV, results are written as separate files (`missing_left.csv`, `missing_right.csv`, `identical.csv`, `different.csv`) in a timestamped `reports_YYYYMMDD_HHMMSS` directory under the job directory.
 - All results are stored in the job's SQLite DB
 
 ## Advanced Usage

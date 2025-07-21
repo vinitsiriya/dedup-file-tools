@@ -5,6 +5,9 @@
 
 **Three powerful CLI tools, one mission: never lose a file, never copy a duplicate, always know what happened, and now—never miss a difference!**
 
+<br>
+<b>✨ New! <code>dedup-file-compare</code>: Instantly spot every difference, missing file, or change between any two folders, drives, or backup pools. Lightning-fast, fully auditable, and designed for peace of mind. <span style="color: #00b894;">Perfect for backup verification, migration audits, and total confidence!</span></b>
+
 ---
 
 ## What Does Each Tool Do?
@@ -37,9 +40,11 @@ All tools are designed for safety, auditability, and total peace of mind!
 
 ---
 
+
 ### 🆚 dedup-file-compare: The "Spot Every Difference" Workflow
 
-Want to know exactly what changed, what’s missing, or what’s extra between two folders, drives, or backup pools? This is your digital X-ray!
+Want to know exactly what changed, what’s missing, or what’s extra between two folders, drives, or backup pools? <b>This is your digital X-ray!</b> <br>
+<b>dedup-file-compare</b> is the ultimate tool for backup verification, migration audits, and total confidence in your data. <span style="color: #0984e3;">No more guessing—just instant, auditable answers!</span>
 
 #### Step-by-Step Tutorial
 
@@ -62,12 +67,12 @@ Want to know exactly what changed, what’s missing, or what’s extra between t
    dedup-file-compare show-result --job-dir ./comparejob --job-name comparejob --output results.csv
    ```
 
-**Want it all in one go?**
+<b>Want it all in one go?</b>
 Just run:
 ```
 dedup-file-compare one-shot --job-dir ./comparejob --job-name comparejob --left ./left --right ./right
 ```
-And... Voila! Instantly see every difference, missing file, or change—fully auditable and exportable.
+<b>And... Voila! Instantly see every difference, missing file, or change—fully auditable and exportable. <span style="color: #00b894;">Sleep easy knowing your data is safe!</span></b>
 
 See the [User Guide](docs/dedup_file_tools_compare/developer_reference/user_prepective/README.md) for advanced workflows and YAML config power.
 
