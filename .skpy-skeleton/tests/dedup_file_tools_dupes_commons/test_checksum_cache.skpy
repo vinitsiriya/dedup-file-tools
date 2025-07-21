@@ -1,0 +1,27 @@
+import sqlite3
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil
+
+
+def setup_test_db(tmp_path):
+    pass
+
+
+def test_insert_and_get(tmp_path):
+    pass
+
+
+def test_get_or_compute(tmp_path):
+    pass
+
+
+def test_exists(tmp_path):
+    pass
+
+
+def test_get_missing(tmp_path):
+    pass
+
+
+def test_get_or_compute_missing_file(tmp_path):
+    pass

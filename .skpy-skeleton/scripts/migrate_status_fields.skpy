@@ -1,0 +1,6 @@
+import sqlite3
+import sys
+
+
+def migrate_status_fields(db_path):
+    pass

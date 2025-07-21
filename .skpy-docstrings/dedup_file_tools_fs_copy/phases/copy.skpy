@@ -1,7 +1,4 @@
-
-
-"""
-File: dedup_file_tools_fs_copy/phases/copy.py
+"""File: dedup_file_tools_fs_copy/phases/copy.py
 Phase: Copy
 
 Purpose:
@@ -16,8 +13,7 @@ Key Features:
 
 Design Goals:
     - Deduplication, resumability, auditability, and robust error handling
-    - Efficient, thread-safe database access and progress feedback
-"""
+    - Efficient, thread-safe database access and progress feedback"""
 
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from dedup_file_tools_commons.utils.fileops import copy_file
@@ -27,10 +23,8 @@ import threading
 import logging
 
 
-
 def reset_status_for_missing_files(db_path, dst_roots):
-    """
-    For any file marked as done but missing from all destination roots, reset its status to 'pending'.
+    """For any file marked as done but missing from all destination roots, reset its status to 'pending'.
 
     Args:
         db_path (str): Path to the job database.
@@ -41,15 +35,12 @@ def reset_status_for_missing_files(db_path, dst_roots):
         - Checks if the file exists in any of the destination roots.
         - If missing, updates the status in the database to 'pending' for retry.
         - Uses ThreadPoolExecutor for parallel checks and tqdm for progress feedback.
-        - Updates are performed sequentially to avoid DB locking.
-    """
+        - Updates are performed sequentially to avoid DB locking."""
     pass
 
 
-
 def get_pending_copies(db_path):
-    """
-    Returns a list of files that are pending, in error, or in progress for copying.
+    """Returns a list of files that are pending, in error, or in progress for copying.
 
     Args:
         db_path (str): Path to the job database.
@@ -59,15 +50,12 @@ def get_pending_copies(db_path):
 
     Implementation:
         - Queries the database for files whose copy status is NULL, 'pending', 'error', or 'in_progress'.
-        - Returns a list of tuples for further processing by the copy phase.
-    """
+        - Returns a list of tuples for further processing by the copy phase."""
     pass
 
 
-
-def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
-    """
-    Updates the copy status for a file in the database.
+def mark_copy_status(db_path, uid, rel_path, status, error_message):
+    """Updates the copy status for a file in the database.
 
     Args:
         db_path (str): Path to the job database.
@@ -79,15 +67,12 @@ def mark_copy_status(db_path, uid, rel_path, status, error_message=None):
     Implementation:
         - Inserts or updates the copy_status table for the given file (uid, rel_path).
         - Records the new status, timestamp, and any error message.
-        - Ensures resumability and accurate tracking of copy progress and errors.
-    """
+        - Ensures resumability and accurate tracking of copy progress and errors."""
     pass
 
 
-
-def copy_files(db_path, src_roots, dst_roots, threads=4):
-    """
-    Orchestrates the multi-threaded copying of files from source to destination, with deduplication and status tracking.
+def copy_files(db_path, src_roots, dst_roots, threads):
+    """Orchestrates the multi-threaded copying of files from source to destination, with deduplication and status tracking.
 
     Args:
         db_path (str): Path to the job database.
@@ -104,6 +89,5 @@ def copy_files(db_path, src_roots, dst_roots, threads=4):
             - Handles errors and updates status accordingly.
         - Uses ThreadPoolExecutor for parallelism and tqdm for progress reporting.
         - Ensures robust, resumable, and deduplicated copy operations.
-        - All operations are logged and errors are handled per file.
-    """
+        - All operations are logged and errors are handled per file."""
     pass

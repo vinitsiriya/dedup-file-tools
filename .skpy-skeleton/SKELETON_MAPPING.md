@@ -9,7 +9,7 @@ This directory contains skeleton files generated from the original Python source
 
 **Source root:** `.`
 
-**Skeleton output root:** `.skpy-docstrings`
+**Skeleton output root:** `.skpy-skeleton`
 
 > The table below maps each generated skeleton file (left column) to its original Python source file (right column). All paths are relative to their respective root directories listed above. Use this mapping to trace any skeleton back to its source.
 
@@ -17,6 +17,76 @@ This directory contains skeleton files generated from the original Python source
 
 | Skeleton File | Original Source File |
 |--------------|---------------------|
+| build\lib\dedup_file_tools_commons\__init__.skpy | build\lib\dedup_file_tools_commons\__init__.py |
+| build\lib\dedup_file_tools_commons\db.skpy | build\lib\dedup_file_tools_commons\db.py |
+| build\lib\dedup_file_tools_commons\utils\__init__.skpy | build\lib\dedup_file_tools_commons\utils\__init__.py |
+| build\lib\dedup_file_tools_commons\utils\checksum_cache.skpy | build\lib\dedup_file_tools_commons\utils\checksum_cache.py |
+| build\lib\dedup_file_tools_commons\utils\db_utils.skpy | build\lib\dedup_file_tools_commons\utils\db_utils.py |
+| build\lib\dedup_file_tools_commons\utils\fileops.skpy | build\lib\dedup_file_tools_commons\utils\fileops.py |
+| build\lib\dedup_file_tools_commons\utils\logging_config.skpy | build\lib\dedup_file_tools_commons\utils\logging_config.py |
+| build\lib\dedup_file_tools_commons\utils\paths.skpy | build\lib\dedup_file_tools_commons\utils\paths.py |
+| build\lib\dedup_file_tools_commons\utils\robust_sqlite.skpy | build\lib\dedup_file_tools_commons\utils\robust_sqlite.py |
+| build\lib\dedup_file_tools_commons\utils\uidpath.skpy | build\lib\dedup_file_tools_commons\utils\uidpath.py |
+| build\lib\dedup_file_tools_dupes_move\__init__.skpy | build\lib\dedup_file_tools_dupes_move\__init__.py |
+| build\lib\dedup_file_tools_dupes_move\cli.skpy | build\lib\dedup_file_tools_dupes_move\cli.py |
+| build\lib\dedup_file_tools_dupes_move\db.skpy | build\lib\dedup_file_tools_dupes_move\db.py |
+| build\lib\dedup_file_tools_dupes_move\handlers.skpy | build\lib\dedup_file_tools_dupes_move\handlers.py |
+| build\lib\dedup_file_tools_dupes_move\main.skpy | build\lib\dedup_file_tools_dupes_move\main.py |
+| build\lib\dedup_file_tools_dupes_move\phases\__init__.skpy | build\lib\dedup_file_tools_dupes_move\phases\__init__.py |
+| build\lib\dedup_file_tools_dupes_move\phases\analysis.skpy | build\lib\dedup_file_tools_dupes_move\phases\analysis.py |
+| build\lib\dedup_file_tools_dupes_move\phases\move.skpy | build\lib\dedup_file_tools_dupes_move\phases\move.py |
+| build\lib\dedup_file_tools_dupes_move\phases\preview_summary.skpy | build\lib\dedup_file_tools_dupes_move\phases\preview_summary.py |
+| build\lib\dedup_file_tools_dupes_move\phases\summary.skpy | build\lib\dedup_file_tools_dupes_move\phases\summary.py |
+| build\lib\dedup_file_tools_dupes_move\phases\verify.skpy | build\lib\dedup_file_tools_dupes_move\phases\verify.py |
+| build\lib\dedup_file_tools_dupes_move\tests\__init__.skpy | build\lib\dedup_file_tools_dupes_move\tests\__init__.py |
+| build\lib\dedup_file_tools_dupes_move\utils\__init__.skpy | build\lib\dedup_file_tools_dupes_move\utils\__init__.py |
+| build\lib\dedup_file_tools_dupes_move\utils\config_loader.skpy | build\lib\dedup_file_tools_dupes_move\utils\config_loader.py |
+| build\lib\dedup_file_tools_fs_copy\__init__.skpy | build\lib\dedup_file_tools_fs_copy\__init__.py |
+| build\lib\dedup_file_tools_fs_copy\db.skpy | build\lib\dedup_file_tools_fs_copy\db.py |
+| build\lib\dedup_file_tools_fs_copy\main.skpy | build\lib\dedup_file_tools_fs_copy\main.py |
+| build\lib\dedup_file_tools_fs_copy\phases\__init__.skpy | build\lib\dedup_file_tools_fs_copy\phases\__init__.py |
+| build\lib\dedup_file_tools_fs_copy\phases\analysis.skpy | build\lib\dedup_file_tools_fs_copy\phases\analysis.py |
+| build\lib\dedup_file_tools_fs_copy\phases\copy.skpy | build\lib\dedup_file_tools_fs_copy\phases\copy.py |
+| build\lib\dedup_file_tools_fs_copy\phases\summary.skpy | build\lib\dedup_file_tools_fs_copy\phases\summary.py |
+| build\lib\dedup_file_tools_fs_copy\phases\verify.skpy | build\lib\dedup_file_tools_fs_copy\phases\verify.py |
+| build\lib\dedup_file_tools_fs_copy\utils\__init__.skpy | build\lib\dedup_file_tools_fs_copy\utils\__init__.py |
+| build\lib\dedup_file_tools_fs_copy\utils\config_loader.skpy | build\lib\dedup_file_tools_fs_copy\utils\config_loader.py |
+| build\lib\dedup_file_tools_fs_copy\utils\destination_pool.skpy | build\lib\dedup_file_tools_fs_copy\utils\destination_pool.py |
+| build\lib\dedup_file_tools_fs_copy\utils\destination_pool_cli.skpy | build\lib\dedup_file_tools_fs_copy\utils\destination_pool_cli.py |
+| build\lib\dedup_file_tools_fs_copy\utils\interactive_config.skpy | build\lib\dedup_file_tools_fs_copy\utils\interactive_config.py |
+| build\lib\tests\__init__.skpy | build\lib\tests\__init__.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\__init__.skpy | build\lib\tests\dedup_file_tools_dupes_commons\__init__.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\test_checksum_cache.skpy | build\lib\tests\dedup_file_tools_dupes_commons\test_checksum_cache.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\test_checksum_cache_invalidation.skpy | build\lib\tests\dedup_file_tools_dupes_commons\test_checksum_cache_invalidation.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\test_checksum_cache_more.skpy | build\lib\tests\dedup_file_tools_dupes_commons\test_checksum_cache_more.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\test_fileops.skpy | build\lib\tests\dedup_file_tools_dupes_commons\test_fileops.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\test_uidpath.skpy | build\lib\tests\dedup_file_tools_dupes_commons\test_uidpath.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\test_uidpath_discovery.skpy | build\lib\tests\dedup_file_tools_dupes_commons\test_uidpath_discovery.py |
+| build\lib\tests\dedup_file_tools_dupes_commons\test_uidpath_real_scenarios.skpy | build\lib\tests\dedup_file_tools_dupes_commons\test_uidpath_real_scenarios.py |
+| build\lib\tests\dedup_file_tools_dupes_move\__init__.skpy | build\lib\tests\dedup_file_tools_dupes_move\__init__.py |
+| build\lib\tests\dedup_file_tools_dupes_move\test_analysis.skpy | build\lib\tests\dedup_file_tools_dupes_move\test_analysis.py |
+| build\lib\tests\dedup_file_tools_dupes_move\test_cli_workflow_move.skpy | build\lib\tests\dedup_file_tools_dupes_move\test_cli_workflow_move.py |
+| build\lib\tests\dedup_file_tools_dupes_move\test_config_loader.skpy | build\lib\tests\dedup_file_tools_dupes_move\test_config_loader.py |
+| build\lib\tests\dedup_file_tools_dupes_move\test_extra_workflow.skpy | build\lib\tests\dedup_file_tools_dupes_move\test_extra_workflow.py |
+| build\lib\tests\dedup_file_tools_dupes_move\test_one_shot_command.skpy | build\lib\tests\dedup_file_tools_dupes_move\test_one_shot_command.py |
+| build\lib\tests\dedup_file_tools_fs_copy\__init__.skpy | build\lib\tests\dedup_file_tools_fs_copy\__init__.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_analysis.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_analysis.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_cli_config_integration.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_cli_config_integration.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_cli_config_yaml.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_cli_config_yaml.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_cli_init_config.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_cli_init_config.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_cli_workflow_copy.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_cli_workflow_copy.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_cli_workflow_verify_deep.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_cli_workflow_verify_deep.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_cli_workflow_verify_shallow.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_cli_workflow_verify_shallow.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_config_loader.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_config_loader.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_copy_with_destination_pool.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_copy_with_destination_pool.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_destination_pool_cache_validation.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_destination_pool_cache_validation.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_destination_pool_cli.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_destination_pool_cli.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_destination_pool_index.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_destination_pool_index.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_generate_config.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_generate_config.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_handle_resume.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_handle_resume.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_import_checksums.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_import_checksums.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_one_shot_command.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_one_shot_command.py |
+| build\lib\tests\dedup_file_tools_fs_copy\test_summary.skpy | build\lib\tests\dedup_file_tools_fs_copy\test_summary.py |
 | dedup_file_tools_commons\__init__.skpy | dedup_file_tools_commons\__init__.py |
 | dedup_file_tools_commons\db.skpy | dedup_file_tools_commons\db.py |
 | dedup_file_tools_commons\utils\__init__.skpy | dedup_file_tools_commons\utils\__init__.py |

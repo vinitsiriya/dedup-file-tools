@@ -1,8 +1,28 @@
+"""Summary phase for dedup_file_tools_fs_copy.
+
+Purpose:
+    Generates a summary report of the copy job, including statistics, error details, and output locations for logs and reports. Supports both console and CSV output for easy review and automation.
+
+Design Goals:
+    - Clear, actionable reporting for end users
+    - Machine-readable output for automation and audit
+    - Extensible for future reporting needs"""
+
 import os
 import csv
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 
 
 def summary_phase(db_path, job_dir):
-    """Prints a summary of what has happened, where the logs are, and generates a CSV report of errors and not-done files."""
+    """Print a summary of the copy job and generate a CSV report of errors and incomplete files.
+
+    Args:
+        db_path (str): Path to the job database.
+        job_dir (str): Path to the job directory (for output files and logs).
+
+    Implementation:
+        - Queries the database for job statistics (total files, done, errors, pending, etc.).
+        - Prints a summary to the console, including log file locations.
+        - Generates a CSV report listing files with errors or not marked as done.
+        - Designed for both human and machine consumption."""
     pass

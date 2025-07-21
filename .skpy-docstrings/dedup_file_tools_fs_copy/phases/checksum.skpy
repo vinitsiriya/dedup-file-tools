@@ -1,3 +1,13 @@
+"""Checksum phase for dedup_file_tools_fs_copy.
+
+Purpose:
+    Computes or updates checksums for all files in the specified table (e.g., source_files or destination_files) and stores them in the shared checksum database. Supports efficient, parallel, and resumable checksum operations.
+
+Design Goals:
+    - High-performance, thread-safe batch checksumming
+    - Robust error handling and progress feedback
+    - Consistent use of shared checksum cache for deduplication and validation"""
+
 from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from dedup_file_tools_commons.utils.checksum_cache2 import ChecksumCache2
@@ -8,5 +18,19 @@ import sqlite3
 
 
 def run_checksum_table(db_path, checksum_db_path, table, threads, no_progress):
-    """Compute or update checksums for all files in the given table (source_files or destination_files)."""
+    """Compute or update checksums for all files in the given table (source_files or destination_files).
+
+    Args:
+        db_path (str): Path to the job database.
+        checksum_db_path (str): Path to the shared checksum database.
+        table (str): Table name to process ('source_files' or 'destination_files').
+        threads (int): Number of worker threads to use.
+        no_progress (bool): If True, disables progress bar output.
+
+    Implementation:
+        - Loads file list from the specified table in the job database.
+        - Uses ThreadPoolExecutor to parallelize checksum computation, with each thread using its own DB connection.
+        - Updates the checksum cache in the shared commons DB.
+        - Reports progress using tqdm if enabled.
+        - Handles errors and logs any issues encountered during processing."""
     pass

@@ -1,0 +1,16 @@
+import sqlite3
+from pathlib import Path
+from dedup_file_tools_fs_copy.main import (
+    handle_init,
+    handle_add_source,
+    handle_resume,
+    get_db_path_from_job_dir,
+)
+
+
+def test_handle_resume_integration(tmp_path):
+    pass
+
+
+def test_handle_resume_corrupted_and_missing(tmp_path):
+    pass

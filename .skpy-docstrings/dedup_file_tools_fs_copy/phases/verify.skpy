@@ -1,3 +1,13 @@
+"""Verification phase for dedup_file_tools_fs_copy.
+
+Purpose:
+    Provides both shallow and deep verification of copied files. Shallow verification checks file existence, size, and timestamps; deep verification also compares checksums. Supports multithreaded execution and resumable verification.
+
+Design Goals:
+    - Reliable, auditable verification of copy results
+    - Efficient, parallel verification for large datasets
+    - Unified interface for both shallow and deep verification"""
+
 import logging
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 import time
@@ -7,18 +17,47 @@ from dedup_file_tools_commons.utils.uidpath import UidPath, UidPathUtil
 
 def verify_files(db_path, stage, reverify):
     """Unified verify function: runs shallow or deep verification based on stage.
+
     Args:
         db_path (str): Path to job database.
         stage (str): 'shallow' or 'deep'.
-        reverify (bool): If True, clear previous verification results before running."""
+        reverify (bool): If True, clear previous verification results before running.
+
+    Implementation:
+        - Dispatches to shallow or deep verification as requested.
+        - Handles clearing of previous results if reverify is True.
+        - Logs progress and errors."""
     pass
 
 
 def shallow_verify_files(db_path, reverify, max_workers):
-    """Shallow verification: check file existence, size, and last modified time. Now multithreaded."""
+    """Shallow verification: check file existence, size, and last modified time. Supports multithreading.
+
+    Args:
+        db_path (str): Path to job database.
+        reverify (bool): If True, clear previous verification results before running.
+        max_workers (int): Number of worker threads to use.
+
+    Implementation:
+        - Checks each file for existence, size, and mtime.
+        - Uses ThreadPoolExecutor for parallelism.
+        - Updates verification status in the database.
+        - Logs progress and errors."""
     pass
 
 
 def deep_verify_files(db_path, reverify, max_workers):
-    """Deep verification: always perform all shallow checks, then compare checksums. Now multithreaded."""
+    """Deep verification: always perform all shallow checks, then compare checksums. Supports multithreading.
+
+    Args:
+        db_path (str): Path to job database.
+        reverify (bool): If True, clear previous verification results before running.
+        max_workers (int): Number of worker threads to use.
+
+    Implementation:
+        - Performs all shallow checks.
+        - Computes and compares checksums for each file.
+        - Uses ThreadPoolExecutor for parallelism.
+        - Updates verification status in the database.
+        - Logs progress and errors."""
     pass

@@ -1,0 +1,49 @@
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from typing import Optional
+from pathlib import Path
+from dedup_file_tools_commons.utils.fileops import compute_sha256
+import time
+
+
+class ChecksumCache:
+    """Centralized access for all checksum cache operations.
+    Uses UidPath for all conversions and file resolution."""
+
+    def __init__(self, conn_factory, uid_path):
+        pass
+
+    def exists_at_paths(self, paths, checksum):
+        pass
+
+    def exists_at_uid_relpath_array(self, uid_relpath_list, checksum):
+        pass
+
+    def exists_at_destination(self, uid, rel_path):
+        pass
+
+    def exists_at_destination_checksum(self, checksum):
+        pass
+
+    def ensure_indexes(self):
+        pass
+
+    def get_or_compute_with_invalidation(self, path):
+        pass
+
+    def exists_at_destination_pool(self, checksum):
+        pass
+
+    def get(self, path):
+        pass
+
+    def exists(self, checksum):
+        pass
+
+    def insert_or_update(self, path, size, last_modified, checksum):
+        pass
+
+    def get_or_compute(self, path):
+        pass
+
+    def exists_at_destination_pool_legacy(self, checksum):
+        pass

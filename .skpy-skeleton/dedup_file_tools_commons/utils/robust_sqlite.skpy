@@ -1,0 +1,14 @@
+import sqlite3
+import time
+from typing import Optional, Callable
+
+
+class RobustSqliteConn:
+    def __init__(self, db_path, timeout, retries, retry_delay, wal):
+        pass
+
+    def connect(self):
+        pass
+
+    def with_connection(self, fn):
+        pass

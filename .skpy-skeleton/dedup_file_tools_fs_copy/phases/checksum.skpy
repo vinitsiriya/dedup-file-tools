@@ -1,0 +1,12 @@
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.checksum_cache2 import ChecksumCache2
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
+import sqlite3
+
+
+def run_checksum_table(db_path, checksum_db_path, table, threads, no_progress):
+    """Compute or update checksums for all files in the given table (source_files or destination_files)."""
+    pass

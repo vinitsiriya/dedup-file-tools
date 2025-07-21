@@ -1,0 +1,46 @@
+from dedup_file_tools_commons.utils.fileops import compute_sha256
+from pathlib import Path
+from typing import Optional
+import time
+
+
+class ChecksumCache2:
+    """Variant of ChecksumCache that takes a live DB connection object for all operations.
+    This avoids opening/closing a connection for each query, and is suitable for batch operations.
+    """
+
+    def __init__(self, uid_path):
+        pass
+
+    def exists_at_paths(self, conn, paths, checksum):
+        pass
+
+    def exists_at_uid_relpath_array(self, conn, uid_relpath_list, checksum):
+        pass
+
+    def exists_at_destination(self, conn, uid, rel_path):
+        pass
+
+    def exists_at_destination_checksum(self, conn, checksum):
+        pass
+
+    def ensure_indexes(self, conn):
+        pass
+
+    def get_or_compute_with_invalidation(self, conn, path):
+        pass
+
+    def exists_at_destination_pool(self, conn, checksum):
+        pass
+
+    def get(self, conn, path):
+        pass
+
+    def exists(self, conn, checksum):
+        pass
+
+    def insert_or_update(self, conn, path, size, last_modified, checksum):
+        pass
+
+    def get_or_compute(self, conn, path):
+        pass

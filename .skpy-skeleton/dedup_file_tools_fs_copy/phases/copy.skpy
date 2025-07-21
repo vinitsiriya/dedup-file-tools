@@ -1,0 +1,23 @@
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from dedup_file_tools_commons.utils.fileops import copy_file
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
+import threading
+import logging
+
+
+def reset_status_for_missing_files(db_path, dst_roots):
+    """For any file marked as done but missing from all destination roots, reset its status to 'pending'."""
+    pass
+
+
+def get_pending_copies(db_path):
+    pass
+
+
+def mark_copy_status(db_path, uid, rel_path, status, error_message):
+    pass
+
+
+def copy_files(db_path, src_roots, dst_roots, threads):
+    pass

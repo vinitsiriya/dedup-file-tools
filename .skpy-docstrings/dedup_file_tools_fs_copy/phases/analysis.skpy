@@ -1,3 +1,13 @@
+"""Analysis phase for dedup_file_tools_fs_copy.
+
+Purpose:
+    Scans source or destination directories, extracts file metadata, and persists it to the job database. Supports efficient, resumable, and auditable workflows for file copy operations.
+
+Design Goals:
+    - Accurate and efficient directory scanning
+    - Robust metadata extraction and storage
+    - Extensible for future metadata fields or analysis logic"""
+
 import logging
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from dedup_file_tools_commons.utils.uidpath import UidPathUtil
@@ -7,16 +17,62 @@ from tqdm import tqdm
 
 
 def persist_file_metadata(db_path, table, file_info):
+    """Persist file metadata to the specified table in the job database.
+
+    Args:
+        db_path (str): Path to the job database.
+        table (str): Table name ('source_files' or 'destination_files').
+        file_info (dict): File metadata (uid, relative_path, size, last_modified, etc.).
+
+    Implementation:
+        - Inserts or updates the file metadata in the specified table.
+        - Ensures idempotency and safe concurrent access."""
     pass
 
 
 def scan_file_on_directory(directory_root, uid_path):
+    """Recursively scan a directory and yield file metadata for each file found.
+
+    Args:
+        directory_root (str): Root directory to scan.
+        uid_path (UidPathUtil): UidPath utility for UID/relative path abstraction.
+
+    Yields:
+        dict: File metadata for each discovered file.
+
+    Implementation:
+        - Walks the directory tree from the root.
+        - For each file, extracts metadata and yields it for persistence."""
     pass
 
 
 def _extract_file_info(file, uid_path):
+    """Extract metadata for a single file using UidPath abstraction.
+
+    Args:
+        file (Path): File to extract info from.
+        uid_path (UidPathUtil): UidPath utility for UID/relative path abstraction.
+
+    Returns:
+        dict: File metadata (uid, relative_path, size, last_modified, etc.).
+
+    Implementation:
+        - Computes UID and relative path for the file.
+        - Gathers size, last modified time, and other relevant metadata."""
     pass
 
 
 def analyze_directories(db_path, directory_roots, table):
+    """Analyze one or more directories and persist file metadata to the job database.
+
+    Args:
+        db_path (str): Path to the job database.
+        directory_roots (list[str]): List of root directories to scan.
+        table (str): Table name to persist metadata ('source_files' or 'destination_files').
+
+    Implementation:
+        - Iterates over all directory roots.
+        - Scans each directory and persists file metadata using persist_file_metadata.
+        - Uses tqdm for progress reporting.
+        - Handles errors and logs issues as needed."""
     pass

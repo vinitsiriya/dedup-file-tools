@@ -1,0 +1,5 @@
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def init_db(db_path):
+    pass

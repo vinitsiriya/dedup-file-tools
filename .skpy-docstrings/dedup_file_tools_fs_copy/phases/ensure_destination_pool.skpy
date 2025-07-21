@@ -1,3 +1,15 @@
+"""Ensures that all files in the destination pool have up-to-date checksums in the shared checksum database.
+
+Purpose:
+    - Scans the destination pool for all files tracked in the job database.
+    - Computes or loads checksums for each file and updates the checksum cache as needed.
+    - Ensures deduplication and verification logic can rely on complete checksum data for all destination files.
+
+Design Goals:
+    - Robust, resumable, and auditable checksum management for destination pools
+    - Efficient batch processing and progress feedback
+    - Safe concurrent database access"""
+
 from dedup_file_tools_commons.utils.paths import (
     get_db_path_from_job_dir,
     get_checksum_db_path,
@@ -10,4 +22,17 @@ import logging
 
 
 def ensure_destination_pool_checksums(job_dir, job_name, checksum_db):
+    """Ensure all files in the destination pool have checksums in the shared checksum database.
+
+    Args:
+        job_dir (str): Path to the job directory.
+        job_name (str): Name of the job.
+        checksum_db (str): Path to the shared checksum database.
+
+    Implementation:
+        - Loads the list of destination files from the job database.
+        - For each file, checks if a checksum exists in the cache; if not, computes and stores it.
+        - Uses tqdm for progress reporting.
+        - Handles errors and logs any issues encountered during processing.
+        - Designed to be idempotent and safe to call multiple times."""
     pass

@@ -1,0 +1,22 @@
+import argparse
+import logging
+from dedup_file_tools_commons.utils.logging_config import setup_logging
+from dedup_file_tools_dupes_move.utils.config_loader import (
+    load_yaml_config,
+    merge_config_with_args,
+)
+from dedup_file_tools_dupes_move.handlers import (
+    handle_init,
+    handle_add_to_lookup_pool,
+    handle_analyze,
+    handle_preview_summary,
+    handle_move,
+    handle_verify,
+    handle_summary,
+    handle_one_shot,
+    handle_import_checksums,
+)
+
+
+def main(argv):
+    pass

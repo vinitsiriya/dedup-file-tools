@@ -1,0 +1,10 @@
+import tempfile
+import shutil
+import sqlite3
+from pathlib import Path
+import pytest
+from dedup_file_tools_fs_copy import main
+
+
+def test_cli_workflow_copy(tmp_path):
+    pass

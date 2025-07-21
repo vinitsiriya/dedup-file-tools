@@ -1,0 +1,9 @@
+import os
+import shutil
+import time
+from pathlib import Path
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def move_duplicates(db_path, dupes_folder, removal_folder, threads):
+    pass

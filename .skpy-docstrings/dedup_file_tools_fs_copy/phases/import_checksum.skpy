@@ -1,3 +1,13 @@
+"""Import checksums phase for dedup_file_tools_fs_copy.
+
+Purpose:
+    Imports checksum data from another job or external database into the current job's checksum cache. Enables reuse of previously computed checksums for faster, deduplicated copy operations.
+
+Design Goals:
+    - Efficient, safe, and idempotent import of checksum data
+    - Robust error handling and progress feedback
+    - Support for large-scale imports and cross-job deduplication"""
+
 from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
 from dedup_file_tools_commons.utils.db_utils import connect_with_attached_checksum_db
 from tqdm import tqdm
@@ -6,4 +16,17 @@ import sys
 
 
 def run_import_checksums(db_path, checksum_db_path, other_db_path):
+    """Import checksums from another database into the current job's checksum cache.
+
+    Args:
+        db_path (str): Path to the current job database.
+        checksum_db_path (str): Path to the shared checksum database.
+        other_db_path (str): Path to the external or previous job's database to import from.
+
+    Implementation:
+        - Attaches the other database and reads checksum data.
+        - Inserts or updates checksums in the current job's checksum cache.
+        - Uses tqdm for progress reporting.
+        - Handles errors and logs any issues encountered during import.
+        - Designed to be idempotent and safe for repeated use."""
     pass

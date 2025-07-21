@@ -1,0 +1,10 @@
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def init_db(db_path):
+    pass
+
+
+def init_dedupe_db(db_path):
+    """Initialize all deduplication tables in the given database."""
+    pass

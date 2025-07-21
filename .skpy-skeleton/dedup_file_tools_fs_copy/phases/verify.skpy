@@ -1,0 +1,24 @@
+import logging
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+import time
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.uidpath import UidPath, UidPathUtil
+
+
+def verify_files(db_path, stage, reverify):
+    """Unified verify function: runs shallow or deep verification based on stage.
+    Args:
+        db_path (str): Path to job database.
+        stage (str): 'shallow' or 'deep'.
+        reverify (bool): If True, clear previous verification results before running."""
+    pass
+
+
+def shallow_verify_files(db_path, reverify, max_workers):
+    """Shallow verification: check file existence, size, and last modified time. Now multithreaded."""
+    pass
+
+
+def deep_verify_files(db_path, reverify, max_workers):
+    """Deep verification: always perform all shallow checks, then compare checksums. Now multithreaded."""
+    pass

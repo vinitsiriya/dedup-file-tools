@@ -1,0 +1,126 @@
+from dedup_file_tools_commons.utils.logging_config import setup_logging
+from dedup_file_tools_commons.db import init_checksum_db
+import argparse
+import logging
+import sys
+import os
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+from pathlib import Path
+from dedup_file_tools_fs_copy.db import init_db
+from dedup_file_tools_fs_copy.phases.analysis import analyze_directories
+from dedup_file_tools_fs_copy.phases.copy import copy_files
+from dedup_file_tools_fs_copy.phases.verify import (
+    shallow_verify_files,
+    deep_verify_files,
+)
+from dedup_file_tools_commons.utils.uidpath import UidPathUtil, UidPath
+from dedup_file_tools_commons.utils.checksum_cache import ChecksumCache
+from dedup_file_tools_commons.utils.paths import (
+    get_db_path_from_job_dir,
+    get_checksum_db_path,
+)
+from dedup_file_tools_commons.utils.db_utils import connect_with_attached_checksum_db
+
+
+def handle_add_to_destination_index_pool(args):
+    pass
+
+
+def init_job_dir(job_dir, job_name, checksum_db):
+    pass
+
+
+def add_file_to_db(db_path, file_path):
+    pass
+
+
+def add_source_to_db(db_path, src_dir):
+    pass
+
+
+def list_files_in_db(db_path):
+    pass
+
+
+def remove_file_from_db(db_path, file_path):
+    pass
+
+
+def parse_args(args):
+    pass
+
+
+def main(args):
+    pass
+
+
+def handle_summary(args):
+    pass
+
+
+def handle_init(args):
+    pass
+
+
+def handle_analyze(args):
+    pass
+
+
+def handle_copy(args):
+    pass
+
+
+def handle_verify(args):
+    pass
+
+
+def handle_resume(args):
+    pass
+
+
+def handle_status(args):
+    pass
+
+
+def handle_log(args):
+    pass
+
+
+def handle_deep_verify(args):
+    pass
+
+
+def handle_verify_status(args):
+    pass
+
+
+def handle_deep_verify_status(args):
+    pass
+
+
+def handle_add_file(args):
+    pass
+
+
+def handle_add_source(args):
+    pass
+
+
+def handle_list_files(args):
+    pass
+
+
+def handle_remove_file(args):
+    pass
+
+
+def handle_checksum(args):
+    pass
+
+
+def handle_import_checksums(args):
+    pass
+
+
+def run_main_command(args):
+    pass

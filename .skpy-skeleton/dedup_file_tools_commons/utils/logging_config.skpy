@@ -1,0 +1,11 @@
+import logging
+import os
+import datetime
+
+
+def setup_logging(job_dir, log_level):
+    """Set up logging to a timestamped log file in the job_dir/logs directory.
+    If job_dir is None, use 'changes/dedup_file_tools_fs_copy.log'.
+    log_level can be passed as a string (e.g., 'INFO', 'DEBUG').
+    If not provided, will use LOG_LEVEL environment variable, or default to 'INFO'."""
+    pass

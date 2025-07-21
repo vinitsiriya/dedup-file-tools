@@ -1,0 +1,10 @@
+import os
+import logging
+from dedup_file_tools_commons.db import init_checksum_db
+from dedup_file_tools_commons.utils.robust_sqlite import RobustSqliteConn
+
+
+def connect_with_attached_checksum_db(main_db_path, checksum_db_path):
+    """Ensure the checksum DB exists and has the correct schema, then attach it to the main DB connection as 'checksumdb'.
+    Returns a sqlite3.Connection object with the checksum DB attached."""
+    pass
