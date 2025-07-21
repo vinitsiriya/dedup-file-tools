@@ -52,8 +52,7 @@ class UidPathUtil:
     def get_mounts_windows(self):
         """Get Windows drive letters and their volume serial numbers using WMI.
         Returns:
-            dict: Mapping of drive letter (e.g., 'C:\') to serial number (int or str).
-        """
+            dict: Mapping of drive letter (e.g., 'C:') to serial number (int or str)."""
         pass
 
     def update_mounts(self):
