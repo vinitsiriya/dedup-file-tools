@@ -74,11 +74,7 @@ def parse_args(argv=None):
 
 def run_main_command(args):
     if args.command == 'one-shot':
-        # Setup logging for one-shot
-        from dedup_file_tools_compare.paths import setup_logging_for_job
-        log_level = getattr(args, 'log_level', 'WARNING')
-        log_file = getattr(args, 'log_file', None)
-        setup_logging_for_job(args.job_dir, log_level=log_level, log_file=log_file)
+        # Logging is already set up in main()
         # 1. init
         db_path = os.path.join(args.job_dir, f"{args.job_name}.db")
         if not os.path.exists(args.job_dir):
@@ -168,6 +164,9 @@ def main(argv=None):
     # Set up logging using the shared commons function
     job_dir = getattr(args, 'job_dir', None)
     log_level = getattr(args, 'log_level', None)
+    # Default to WARNING if not specified
+    if not log_level:
+        log_level = 'WARNING'
     setup_logging(log_level=log_level, job_dir=job_dir)
     logging.info(f"[COMPARE][MAIN] main() called with args: {argv}")
     code = run_main_command(args)

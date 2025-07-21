@@ -18,6 +18,4 @@ def get_log_file(job_dir):
     timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     return os.path.join(logs_dir, f"compare_{timestamp}.log")
 
-def setup_logging_for_job(job_dir, log_level='INFO', log_file=None):
-    # Use the shared setup_logging from commons
-    setup_logging(job_dir=job_dir, log_level=log_level)
+
