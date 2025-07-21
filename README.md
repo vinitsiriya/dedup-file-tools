@@ -6,7 +6,7 @@
 **Three powerful CLI tools, one mission: never lose a file, never copy a duplicate, always know what happened, and now—never miss a difference!**
 
 <br>
-<b>✨ New! <code>dedup-file-compare</code>: Instantly spot every difference, missing file, or change between any two folders, drives, or backup pools. Lightning-fast, fully auditable, and designed for peace of mind. <span style="color: #00b894;">Perfect for backup verification, migration audits, and total confidence!</span></b>
+<b>✨ New! <code>dedup-file-compare</code>: Instantly spot every difference, missing file, or change between any two folders, drives, or backup pools. Fully auditable and designed for peace of mind. <span style="color: #00b894;">Perfect for backup verification, migration audits, and total confidence!</span></b>
 
 ---
 
@@ -16,7 +16,7 @@
 
 - **dedup-file-move-dupes**: Hunts down duplicate files in any folder or storage pool and safely moves all detected duplicates to a special `.dupes` directory. It’s the easiest way to clean up your drives and reclaim space—exciting, right?
 
-- **dedup-file-compare**: The newest member of the family! Instantly compare two directories (or backup pools) by checksum, size, or modification time. Find missing, extra, or changed files with blazing speed and total auditability. Perfect for backup verification, migration audits, and peace of mind!
+- **dedup-file-compare**: The newest member of the family! Instantly compare two directories (or backup pools) by checksum, size, or modification time. Find missing, extra, or changed files with total auditability. Perfect for backup verification, migration audits, and peace of mind!
 
 All tools are designed for safety, auditability, and total peace of mind!
 
@@ -44,7 +44,7 @@ All tools are designed for safety, auditability, and total peace of mind!
 ### 🆚 dedup-file-compare: The "Spot Every Difference" Workflow
 
 Want to know exactly what changed, what’s missing, or what’s extra between two folders, drives, or backup pools? <b>This is your digital X-ray!</b> <br>
-<b>dedup-file-compare</b> is the ultimate tool for backup verification, migration audits, and total confidence in your data. <span style="color: #0984e3;">No more guessing—just instant, auditable answers!</span>
+<b>dedup-file-compare</b> is the ultimate tool for backup verification, migration audits, and total confidence in your data. <span style="color: #0984e3;">No more guessing—just clear, auditable answers!</span>
 
 #### Step-by-Step Tutorial
 
