@@ -33,25 +33,12 @@ def find_missing_files(db_path, by='checksum', threads=4, no_progress=False, lef
     right_files = cur.fetchall()
     logging.info(f"[COMPARE][COMPARE] Loaded {len(left_files)} left files and {len(right_files)} right files")
 
+
     left_map = {(uid, rel_path): (last_modified, size) for uid, rel_path, last_modified, size in left_files}
     right_map = {(uid, rel_path): (last_modified, size) for uid, rel_path, last_modified, size in right_files}
-    left_set = set(left_map.keys())
-    right_set = set(right_map.keys())
-
-    # Find missing from right (present in left, not in right)
-    missing_from_right = [(uid, rel_path, left_map[(uid, rel_path)][0], left_map[(uid, rel_path)][1]) for (uid, rel_path) in left_set - right_set]
-    # Find missing from left (present in right, not in left)
-    missing_from_left = [(uid, rel_path, right_map[(uid, rel_path)][0], right_map[(uid, rel_path)][1]) for (uid, rel_path) in right_set - left_set]
-
-    logging.info(f"[COMPARE][COMPARE] Missing from right: {len(missing_from_right)}, missing from left: {len(missing_from_left)}")
-
-    # For files present in both, compare checksums
-    both = left_set & right_set
-    # Load checksums from shared checksum DB (assume checksum-cache.db in job_dir)
     job_dir = os.path.dirname(db_path)
     checksum_db_path = os.path.join(job_dir, 'checksum-cache.db')
     checksum_conn = sqlite3.connect(checksum_db_path)
-    # Use ChecksumCache2 for generic pool checks
     uid_path_util = None
     try:
         from dedup_file_tools_commons.utils.uidpath import UidPathUtil
@@ -60,30 +47,52 @@ def find_missing_files(db_path, by='checksum', threads=4, no_progress=False, lef
         pass
     checksum_cache2 = ChecksumCache2(uid_path_util)
 
-    logging.info(f"[COMPARE][COMPARE] Comparing {len(both)} files present in both pools")
-
+    # Build sets of checksums for left and right pools
     def get_checksum(uid, rel_path):
         cur = checksum_conn.cursor()
         cur.execute('SELECT checksum FROM checksum_cache WHERE uid=? AND relative_path=? AND is_valid=1', (uid, rel_path))
         row = cur.fetchone()
         return row[0] if row else None
 
+    left_checksums = {}
+    for (uid, rel_path) in left_map:
+        csum = get_checksum(uid, rel_path)
+        if csum:
+            left_checksums[(uid, rel_path)] = csum
+
+    right_checksums = {}
+    for (uid, rel_path) in right_map:
+        csum = get_checksum(uid, rel_path)
+        if csum:
+            right_checksums[(uid, rel_path)] = csum
+
+    # Find identical files by checksum
     identical = []
+    left_csum_to_info = {v: (k, left_map[k][0], left_map[k][1]) for k, v in left_checksums.items()}
+    right_csum_to_info = {v: (k, right_map[k][0], right_map[k][1]) for k, v in right_checksums.items()}
+    for csum in set(left_csum_to_info.keys()) & set(right_csum_to_info.keys()):
+        (left_uid_rel, left_mtime, left_size) = left_csum_to_info[csum]
+        (right_uid_rel, right_mtime, right_size) = right_csum_to_info[csum]
+        # Insert using left uid/rel_path as key, but include both left/right info and checksum
+        identical.append((left_uid_rel[0], left_uid_rel[1], left_mtime, left_size, right_mtime, right_size, csum))
+
+    # Find missing files by checksum
+    missing_from_right = []
+    for (uid, rel_path), csum in left_checksums.items():
+        if csum not in right_csum_to_info:
+            missing_from_right.append((uid, rel_path, left_map[(uid, rel_path)][0], left_map[(uid, rel_path)][1]))
+
+    missing_from_left = []
+    for (uid, rel_path), csum in right_checksums.items():
+        if csum not in left_csum_to_info:
+            missing_from_left.append((uid, rel_path, right_map[(uid, rel_path)][0], right_map[(uid, rel_path)][1]))
+
+    # Find differing files by checksum (same rel_path, different checksum)
     different = []
-    for (uid, rel_path) in tqdm(both, desc="Comparing checksums", unit="file"):
-        csum_left = get_checksum(uid, rel_path)
-        csum_right = get_checksum(uid, rel_path)
-        # Example: check if this checksum exists in left or right pool using exists_at_pool
-        exists_in_left = checksum_cache2.exists_at_pool(checksum_conn, 'left_pool_files', csum_left) if csum_left else False
-        exists_in_right = checksum_cache2.exists_at_pool(checksum_conn, 'right_pool_files', csum_right) if csum_right else False
-        # In this design, both sides use the same checksum DB, so csum_left == csum_right
-        if csum_left and csum_right:
-            if csum_left == csum_right:
-                identical.append((uid, rel_path, left_map[(uid, rel_path)][0], left_map[(uid, rel_path)][1], right_map[(uid, rel_path)][0], right_map[(uid, rel_path)][1], csum_left))
-            else:
-                different.append((uid, rel_path, left_map[(uid, rel_path)][0], left_map[(uid, rel_path)][1], right_map[(uid, rel_path)][0], right_map[(uid, rel_path)][1], csum_left, csum_right))
-        else:
-            # If checksum missing, treat as different
+    for (uid, rel_path) in set(left_map.keys()) & set(right_map.keys()):
+        csum_left = left_checksums.get((uid, rel_path))
+        csum_right = right_checksums.get((uid, rel_path))
+        if csum_left and csum_right and csum_left != csum_right:
             different.append((uid, rel_path, left_map[(uid, rel_path)][0], left_map[(uid, rel_path)][1], right_map[(uid, rel_path)][0], right_map[(uid, rel_path)][1], csum_left, csum_right))
 
     checksum_conn.close()

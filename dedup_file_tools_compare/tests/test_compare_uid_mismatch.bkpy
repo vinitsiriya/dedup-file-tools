@@ -1,0 +1,71 @@
+import os
+import tempfile
+import shutil
+from dedup_file_tools_compare.db import init_db
+from dedup_file_tools_compare.phases.add_to_pool import add_directory_to_pool
+from dedup_file_tools_compare.phases.ensure_pool_checksums import ensure_pool_checksums
+from dedup_file_tools_compare.phases.compare import find_missing_files
+from dedup_file_tools_compare.phases.results import show_result
+
+def create_test_file(path, content):
+    with open(path, 'w') as f:
+        f.write(content)
+
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def mock_uidpathutil(force_uid):
+    from dedup_file_tools_commons.utils import uidpath, uidpath as uidpath_mod
+    orig_convert_path = uidpath.UidPathUtil.convert_path
+    def patched(self, path):
+        # Always return a UidPath with forced UID and correct relative_path
+        from pathlib import Path
+        path_obj = Path(path).resolve()
+        # Use the original method to get the relative_path
+        orig_result = orig_convert_path(self, path)
+        return uidpath.UidPath(force_uid, orig_result.relative_path)
+    uidpath.UidPathUtil.convert_path = patched
+    try:
+        yield
+    finally:
+        uidpath.UidPathUtil.convert_path = orig_convert_path
+
+def test_uid_mismatch(tmpdir):
+    job_dir = tmpdir
+    job_name = 'testjob_uid_mismatch'
+    db_path = os.path.join(job_dir, f'{job_name}.db')
+    left_dir = os.path.join(job_dir, 'left_uid')
+    right_dir = os.path.join(job_dir, 'right_uid')
+    os.makedirs(left_dir, exist_ok=True)
+    os.makedirs(right_dir, exist_ok=True)
+    # Create files with same name and content, but patch UidPathUtil to return different UIDs
+    fname = 'same.txt'
+    create_test_file(os.path.join(left_dir, fname), 'samecontent')
+    create_test_file(os.path.join(right_dir, fname), 'samecontent')
+    # Add to pools
+    init_db(db_path)
+    add_directory_to_pool(db_path, left_dir, 'left_pool_files')
+    add_directory_to_pool(db_path, right_dir, 'right_pool_files')
+    # Mock UidPathUtil to force different UIDs for left and right
+    from dedup_file_tools_compare.tests.test_compare_uid_mismatch import mock_uidpathutil
+    with mock_uidpathutil('LEFT_UID'):
+        ensure_pool_checksums(job_dir, job_name, 'left_pool_files')
+    with mock_uidpathutil('RIGHT_UID'):
+        ensure_pool_checksums(job_dir, job_name, 'right_pool_files')
+    find_missing_files(db_path)
+    print('--- UID Mismatch Test ---')
+    show_result(db_path, summary=True)
+    show_result(db_path, full_report=True)
+
+def run_all():
+    tmpdir = tempfile.mkdtemp()
+    try:
+        test_uid_mismatch(tmpdir)
+        print('UID mismatch test completed.')
+    finally:
+        shutil.rmtree(tmpdir)
+
+if __name__ == '__main__':
+    run_all()

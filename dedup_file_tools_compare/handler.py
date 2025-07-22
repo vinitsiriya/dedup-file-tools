@@ -23,7 +23,7 @@ def handle_add_to_pool(args, side):
 
 def handle_find_missing_files(args):
     from dedup_file_tools_compare.phases.compare import find_missing_files
-    from dedup_file_tools_compare.paths import get_db_path, setup_logging_for_job
+    from dedup_file_tools_compare.paths import get_db_path
     db_path = get_db_path(args.job_dir, args.job_name)
     # Logging setup is handled in main.py
     import logging
@@ -32,7 +32,7 @@ def handle_find_missing_files(args):
 
 def handle_show_result(args):
     from dedup_file_tools_compare.phases.results import show_result
-    from dedup_file_tools_compare.paths import get_db_path, get_csv_path, setup_logging_for_job
+    from dedup_file_tools_compare.paths import get_db_path, get_csv_path
     db_path = get_db_path(args.job_dir, args.job_name)
     # Logging setup is handled in main.py
     import logging

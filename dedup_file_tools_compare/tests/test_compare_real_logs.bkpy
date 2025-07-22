@@ -1,0 +1,49 @@
+import os
+from dedup_file_tools_compare.db import init_db
+from dedup_file_tools_compare.phases.add_to_pool import add_directory_to_pool
+from dedup_file_tools_compare.phases.ensure_pool_checksums import ensure_pool_checksums
+from dedup_file_tools_compare.phases.compare import find_missing_files
+from dedup_file_tools_compare.phases.results import show_result
+import tempfile
+import shutil
+import pytest
+
+def test_compare_real_logs():
+    # This test compares files in c:/logs and d:/logs (must exist and be accessible)
+    job_dir = tempfile.mkdtemp()
+    job_name = 'testjob_real_logs'
+    db_path = os.path.join(job_dir, f'{job_name}.db')
+    left_dir = 'c:/logs'
+    right_dir = 'd:/logs'
+    assert os.path.exists(left_dir), f"Left dir {left_dir} does not exist."
+    assert os.path.exists(right_dir), f"Right dir {right_dir} does not exist."
+    # Add to pools
+    init_db(db_path)
+    add_directory_to_pool(db_path, left_dir, 'left_pool_files')
+    add_directory_to_pool(db_path, right_dir, 'right_pool_files')
+    ensure_pool_checksums(job_dir, job_name, 'left_pool_files')
+    ensure_pool_checksums(job_dir, job_name, 'right_pool_files')
+    find_missing_files(db_path)
+    print('--- Real Logs Compare Test ---')
+    # Capture results for assertion
+    from io import StringIO
+    import sys
+    old_stdout = sys.stdout
+    sys.stdout = mystdout = StringIO()
+    show_result(db_path, summary=True)
+    sys.stdout = old_stdout
+    output = mystdout.getvalue()
+    # Assert that there are no missing, different, or unique files
+    assert "Missing from right: 0" in output, "Should be no missing files from right if directories are identical."
+    assert "Missing from left: 0" in output, "Should be no missing files from left if directories are identical."
+    assert "Identical files:" in output, "Should detect identical files."
+    # Optionally print full report
+    show_result(db_path, full_report=True)
+    import gc, time
+    gc.collect()
+    time.sleep(0.5)
+    shutil.rmtree(job_dir)
+
+@pytest.mark.skip(reason="Temporary live test for real logs folders. Remove or skip in CI.")
+def test_compare_real_logs_skipped():
+    pass
