@@ -214,6 +214,7 @@ See [UidPath documentation](docs/dedup_file_tools_commons/uidpath.md) for detail
   - [dedup_file_tools_fs_copy CLI Reference](docs/dedup_file_tools_fs_copy/developer_reference/cli.md)
 - **User guides & tutorials:**
   - [dedup_file_tools_compare User Guide](docs/dedup_file_tools_compare/developer_reference/user_prepective/README.md)
+  - [Tutorial: Comparing Directories (dedup-file-compare)](docs/dedup_file_tools_compare/developer_reference/user_prepective/dedup-file-compare-tutorial.md)
   - [dedup_file_tools_dupes_move User Guide](docs/dedup_file_tools_dupes_move/user_prespective/README.md)
   - [Generic Tutorial: Move Duplicates (dedup-file-move-dupes)](docs/dedup_file_tools_dupes_move/user_prespective/generic_dupes_move_tutorial.md)
   - [dedup_file_tools_fs_copy User Guide](docs/dedup_file_tools_fs_copy/user_prepective/readme.md)

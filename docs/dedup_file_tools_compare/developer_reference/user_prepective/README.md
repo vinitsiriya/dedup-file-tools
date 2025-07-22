@@ -50,7 +50,9 @@ The `dedup-file-compare` tool provides a robust, scriptable command-line interfa
 - Use `--no-progress` for scripting or automation
 - Filter results with `--show` (identical, different, unique-left, unique-right, all)
 
+
 ## See Also
+- [Tutorial: Comparing Directories](dedup-file-compare-tutorial.md) for a step-by-step user workflow
 - [CLI Reference](cli.md) for full command and option details
 - [Developer Reference](../requirements/requirements.md) for technical details
 
